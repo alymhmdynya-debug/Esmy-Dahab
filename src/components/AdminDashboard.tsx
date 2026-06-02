@@ -15,7 +15,7 @@ import { uploadToImgBB } from '../lib/imgbb';
 import { Design, AccessCode, Order, User as UserProfile, ConfigApp } from '../types';
 import { 
   LogOut, Shield, ShieldCheck, ShoppingBag, Image as ImageIcon, 
-  TrendingUp, Clock, CheckCircle, Trash2, Plus, 
+  TrendingUp, Clock, CheckCircle, Trash2, Plus, Crown,
   MessageCircle, Sparkles, Upload, Copy, Check, Info, Settings, Users, Percent, HelpCircle
 } from 'lucide-react';
 
@@ -36,13 +36,17 @@ export default function AdminDashboard() {
   // App Pricing inputs
   const [prices, setPrices] = useState<ConfigApp>({
     classicPrice: 499,
+    classicDescription: '',
     duoPrice: 899,
+    duoDescription: '',
     premiumPrice: 880,
-    whatsappNumber: '201223043867'
+    premiumDescription: '',
+    whatsappNumber: '201223043867',
+    focusedProduct: 'premium'
   });
   const [savingPrices, setSavingPrices] = useState<boolean>(false);
 
-  // Designs inputs
+  // Designs inputs and Editing configuration structures
   const [designs, setDesigns] = useState<Design[]>([]);
   const [designName, setDesignName] = useState<string>('');
   const [designFile, setDesignFile] = useState<File | null>(null);
@@ -50,6 +54,9 @@ export default function AdminDashboard() {
   const [designWhatsapp, setDesignWhatsapp] = useState<string>('');
   const [uploadingDesign, setUploadingDesign] = useState<boolean>(false);
   const [designPreview, setDesignPreview] = useState<string>('');
+  const [designShowOnHome, setDesignShowOnHome] = useState<boolean>(true);
+  const [editingDesignId, setEditingDesignId] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string>('');
 
   // Access Codes Inputs
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -90,7 +97,17 @@ export default function AdminDashboard() {
         const docRef = doc(db, 'config', 'app');
         const snap = await getDoc(docRef);
         if (snap.exists()) {
-          setPrices(snap.data() as ConfigApp);
+          const data = snap.data();
+          setPrices({
+            classicPrice: data.classicPrice ?? 499,
+            classicDescription: data.classicDescription ?? '',
+            duoPrice: data.duoPrice ?? 899,
+            duoDescription: data.duoDescription ?? '',
+            premiumPrice: data.premiumPrice ?? 880,
+            premiumDescription: data.premiumDescription ?? '',
+            whatsappNumber: data.whatsappNumber ?? '201223043867',
+            focusedProduct: data.focusedProduct ?? 'premium'
+          });
         } else {
           // Initialize if absent
           await setDoc(docRef, prices);
@@ -192,41 +209,53 @@ export default function AdminDashboard() {
   };
 
   // Upload/Create Custom Designs
-  const handleCreateDesign = async (e: React.FormEvent) => {
+  // Upload/Create or Update Custom Designs
+  const handleCreateOrUpdateDesign = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!designFile) {
+    if (!editingDesignId && !designFile) {
       alert('يرجى اختيار صورة تصميم أولاً!');
       return;
     }
     setUploadingDesign(true);
     try {
-      // 1. Upload to ImgBB
-      const url = await uploadToImgBB(designFile);
+      let finalUrl = existingImageUrl;
+      if (designFile) {
+        finalUrl = await uploadToImgBB(designFile);
+      }
 
-      // 2. Parse tags
       const tagsList = designTags
         .toLowerCase()
         .split(',')
         .map(t => t.trim())
         .filter(t => t.length > 0);
 
-      // Add name of design to tags automatically to widen search matched matches
       if (!tagsList.includes(designName.toLowerCase())) {
         tagsList.push(designName.toLowerCase());
       }
 
-      // 3. Save design to firestore
-      const designId = doc(collection(db, 'designs')).id;
-      const newDesign: Design = {
-        id: designId,
-        name: designName,
-        imageUrl: url,
-        searchTags: tagsList,
-        whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت فريش بتصميم: ${designName}`,
-        createdAt: serverTimestamp()
-      };
-
-      await setDoc(doc(db, 'designs', designId), newDesign);
+      if (editingDesignId) {
+        await updateDoc(doc(db, 'designs', editingDesignId), {
+          name: designName,
+          imageUrl: finalUrl,
+          searchTags: tagsList,
+          whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت بتصميم: ${designName}`,
+          showOnHome: designShowOnHome
+        });
+        alert('تم تعديل وحفظ التصميم بنجاح واعتمدنا التغييرات الفاخرة!');
+      } else {
+        const designId = doc(collection(db, 'designs')).id;
+        const newDesign: Design = {
+          id: designId,
+          name: designName,
+          imageUrl: finalUrl,
+          searchTags: tagsList,
+          whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت بتصميم: ${designName}`,
+          showOnHome: designShowOnHome,
+          createdAt: serverTimestamp()
+        };
+        await setDoc(doc(db, 'designs', designId), newDesign);
+        alert('تم إضافة التصميم المذهب بنجاح لقائمة الكتالوج الفاخر!');
+      }
 
       // Reset
       setDesignName('');
@@ -234,19 +263,48 @@ export default function AdminDashboard() {
       setDesignPreview('');
       setDesignTags('');
       setDesignWhatsapp('');
-      alert('تم إضافة التصميم المذهب بنجاح لقائمة الكتالوج الفاخر!');
+      setDesignShowOnHome(true);
+      setEditingDesignId(null);
+      setExistingImageUrl('');
     } catch (err) {
       console.error(err);
-      alert('فشل رفع التصميم، تفقد صلاحيات Storage أو حجم الملف.');
+      alert('فشل حفظ التصميم، تفقد صلاحيات قاعدة البيانات أو حجم الملف.');
     } finally {
       setUploadingDesign(false);
     }
+  };
+
+  const startEditDesign = (design: Design) => {
+    setEditingDesignId(design.id);
+    setDesignName(design.name);
+    setDesignTags(design.searchTags.join(', '));
+    setDesignWhatsapp(design.whatsappMessage);
+    setDesignShowOnHome(design.showOnHome !== false);
+    setExistingImageUrl(design.imageUrl);
+    setDesignPreview(design.imageUrl);
+    
+    const target = document.getElementById('design-form-top');
+    target?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const cancelEditDesign = () => {
+    setDesignName('');
+    setDesignFile(null);
+    setDesignPreview('');
+    setDesignTags('');
+    setDesignWhatsapp('');
+    setDesignShowOnHome(true);
+    setEditingDesignId(null);
+    setExistingImageUrl('');
   };
 
   const handleDeleteDesign = async (id: string) => {
     if (!confirm('هل أنت متأكد من حذف هذا التصميم؟')) return;
     try {
       await deleteDoc(doc(db, 'designs', id));
+      if (editingDesignId === id) {
+        cancelEditDesign();
+      }
     } catch (err) {
       console.error(err);
     }
@@ -685,16 +743,20 @@ export default function AdminDashboard() {
 
           {/* DESIGNS CATALOG TAB */}
           {activeTab === 'designs' && (
-            <div className="space-y-8">
+            <div className="space-y-8" id="design-form-top">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Create Design Form */}
-                <div className="lg:col-span-1 bg-black/40 border border-zinc-900 p-6 rounded-2xl space-y-4">
-                  <h4 className="text-md font-bold text-white flex items-center gap-1.5">
+                {/* Create or Edit Design Form */}
+                <div className={`lg:col-span-1 border p-6 rounded-2xl space-y-4 transition-all ${
+                  editingDesignId 
+                    ? 'bg-amber-950/20 border-gold shadow-md shadow-gold/5' 
+                    : 'bg-black/40 border-zinc-900'
+                }`}>
+                  <h4 className="text-md font-bold text-white flex items-center gap-1.5 text-right">
                     <Plus className="w-4 h-4 text-gold" />
-                    <span>إضافة تصميم مذهب جديد</span>
+                    <span>{editingDesignId ? 'تعديل التصميم المذهب الحالي' : 'إضافة تصميم مذهب جديد'}</span>
                   </h4>
 
-                  <form onSubmit={handleCreateDesign} className="space-y-4">
+                  <form onSubmit={handleCreateOrUpdateDesign} className="space-y-4 text-right">
                     <div>
                       <label className="block text-zinc-400 text-[10px] font-semibold mb-2">اسم التصميم المعروض</label>
                       <input
@@ -703,13 +765,13 @@ export default function AdminDashboard() {
                         value={designName}
                         onChange={(e) => setDesignName(e.target.value)}
                         placeholder="علي (الخط الديواني)"
-                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold"
+                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold text-right"
                       />
                     </div>
 
                     <div>
                       <label className="block text-zinc-400 text-[10px] font-semibold mb-2">صورة التصميم بجودة عالية</label>
-                      <div className="border border-dashed border-zinc-800 h-28 rounded-lg flex flex-col items-center justify-center relative cursor-pointer hover:border-gold bg-zinc-900 text-center p-2">
+                      <div className="border border-dashed border-zinc-805 border-zinc-800 h-28 rounded-lg flex flex-col items-center justify-center relative cursor-pointer hover:border-gold bg-zinc-900 text-center p-2">
                         <input
                           type="file"
                           accept="image/*"
@@ -730,6 +792,9 @@ export default function AdminDashboard() {
                           </div>
                         )}
                       </div>
+                      {editingDesignId && !designFile && (
+                        <p className="text-[9px] text-zinc-500 mt-1">اتركه فارغاً للاحتفاظ بالصورة الحالية من ImgBB</p>
+                      )}
                     </div>
 
                     <div>
@@ -740,7 +805,7 @@ export default function AdminDashboard() {
                         value={designTags}
                         onChange={(e) => setDesignTags(e.target.value)}
                         placeholder="علي, ali, الديواني, تيشيرت علي"
-                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold"
+                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold text-right"
                       />
                       <span className="text-[9px] text-zinc-500 mt-1 block">لتمكين العملاء من تصفية وبحث الأسماء المذهبة بسهولة</span>
                     </div>
@@ -750,31 +815,58 @@ export default function AdminDashboard() {
                       <textarea
                         value={designWhatsapp}
                         onChange={(e) => setDesignWhatsapp(e.target.value)}
-                        placeholder="أهلاً براند إسمي ذهب، أريد الحصول على نسخة تيشيرت باسم علي الفاخر..."
-                        className="w-full h-16 px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold resize-none"
+                        placeholder="أهلاً براند إسمي ذهب، أريد الحصول على تيشيرت مذهب فخم..."
+                        className="w-full h-16 px-3 py-2 bg-zinc-900 border border-zinc-805 border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold resize-none text-right"
                       />
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={uploadingDesign}
-                      className="w-full py-2.5 bg-gold text-black hover:bg-gold/90 transition-colors font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      {uploadingDesign ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                          <span>جاري رفع الصورة والبيانات...</span>
-                        </>
-                      ) : (
-                        <span>رفع ونشر في الكتالوج</span>
+                    {/* SHOW ON HOME TOGGLE */}
+                    <div className="flex items-center justify-end gap-2 bg-zinc-950/40 p-3 rounded-lg border border-zinc-900">
+                      <label htmlFor="showOnHomeCheckbox" className="text-[10px] text-zinc-300 font-bold select-none cursor-pointer">
+                        تثبيت وعرض التصميم في الكتالوج الرئيسي بالصفحة الرئيسية
+                      </label>
+                      <input
+                        id="showOnHomeCheckbox"
+                        type="checkbox"
+                        checked={designShowOnHome}
+                        onChange={(e) => setDesignShowOnHome(e.target.checked)}
+                        className="w-4 h-4 accent-gold cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      {editingDesignId && (
+                        <button
+                          type="button"
+                          onClick={cancelEditDesign}
+                          className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-800 text-white transition-colors text-xs font-bold rounded-lg cursor-pointer"
+                        >
+                          إلغاء التعديل
+                        </button>
                       )}
-                    </button>
+                      <button
+                        type="submit"
+                        disabled={uploadingDesign}
+                        className={`flex-grow py-2.5 transition-colors font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer ${
+                          editingDesignId ? 'bg-gold text-black hover:bg-gold/90' : 'bg-gold/90 hover:bg-gold text-black'
+                        }`}
+                      >
+                        {uploadingDesign ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                            <span>جاري معالجة وحفظ التصميم...</span>
+                          </>
+                        ) : (
+                          <span>{editingDesignId ? 'حفظ التعديلات الفخمة' : 'رفع ونشر في الكتالوج'}</span>
+                        )}
+                      </button>
+                    </div>
                   </form>
                 </div>
 
                 {/* List design grids */}
-                <div className="lg:col-span-2">
-                  <h4 className="text-md font-bold text-white mb-4">التصاميم والأنماط المعروضة</h4>
+                <div className="lg:col-span-2 text-right">
+                  <h4 className="text-md font-bold text-white mb-4">التصاميم والأنماط المعروضة بالكتالوج ({designs.length})</h4>
 
                   {designs.length === 0 ? (
                     <div className="text-center py-12 border border-zinc-900 rounded-2xl bg-zinc-900/10">
@@ -783,29 +875,50 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-y-auto max-h-[550px] p-1">
-                      {designs.map(d => (
-                        <div key={d.id} className="bg-black/60 border border-zinc-900 rounded-2xl overflow-hidden text-right group relative">
-                          <div className="aspect-square bg-zinc-950 p-2 relative flex items-center justify-center">
-                            <img src={d.imageUrl} alt={d.name} className="h-full object-contain group-hover:scale-105 transition-transform" />
-                            <button
-                              onClick={() => handleDeleteDesign(d.id)}
-                              className="absolute top-2 left-2 p-1.5 bg-red-950/70 border border-red-950 text-red-400 rounded-lg hover:bg-red-950 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <div className="p-3">
-                            <h5 className="font-bold text-xs text-white truncate">{d.name}</h5>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {d.searchTags.slice(0, 3).map((tag, idx) => (
-                                <span key={idx} className="bg-zinc-900 text-zinc-500 text-[8px] font-medium px-1 py-0.5 rounded">
-                                  {tag}
-                                </span>
-                              ))}
+                      {designs.map(d => {
+                        const isMainHome = d.showOnHome !== false;
+                        return (
+                          <div key={d.id} className="bg-black/60 border border-zinc-900 rounded-2xl overflow-hidden text-right group relative flex flex-col justify-between">
+                            <div className="aspect-square bg-zinc-950 p-2 relative flex items-center justify-center border-b border-zinc-900/40">
+                              <img src={d.imageUrl} alt={d.name} referrerPolicy="no-referrer" className="h-full object-contain group-hover:scale-105 transition-transform" />
+                              
+                              <div className="absolute top-2 left-2 flex gap-1 z-10">
+                                <button
+                                  onClick={() => startEditDesign(d)}
+                                  className="p-1.5 bg-zinc-900/90 border border-gold/40 text-gold rounded-lg hover:bg-zinc-800 cursor-pointer"
+                                  title="تعديل هذا التصميم"
+                                >
+                                  <Settings className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDesign(d.id)}
+                                  className="p-1.5 bg-red-950/70 border border-red-950 text-red-400 rounded-lg hover:bg-red-950 cursor-pointer"
+                                  title="حذف هذا التصميم"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              {isMainHome && (
+                                <div className="absolute bottom-2 right-2 bg-gold/15 text-gold border border-gold/30 text-[8px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                  <Crown className="w-2 h-2 text-gold" style={{ display: 'inline-block' }} />
+                                  <span>عرض بالرئيسية</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-3 space-y-1">
+                              <h5 className="font-bold text-xs text-white truncate">{d.name}</h5>
+                              <div className="flex flex-wrap gap-1">
+                                {d.searchTags.slice(0, 3).map((tag, idx) => (
+                                  <span key={idx} className="bg-zinc-900 text-zinc-500 text-[8px] font-medium px-1.5 py-0.5 rounded">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -817,74 +930,136 @@ export default function AdminDashboard() {
           {activeTab === 'prices' && (
             <div className="max-w-xl mx-auto space-y-6">
               <div>
-                <h3 className="text-md font-bold text-gold">التحكم بأسعار التيشيرت وهاتف واتساب المبيعات</h3>
-                <p className="text-xs text-zinc-400 mt-1">تعديل هذه القيم يغير الأسعار فوراً في واجهة الجمهور والعملاء</p>
+                <h3 className="text-md font-bold text-gold text-right">التحكم بأسعار وباقات الأسياد المتاحة</h3>
+                <p className="text-xs text-zinc-400 mt-1 text-right">تعديل هذه القيم يغير الأسعار والتفاصيل فوراً في واجهة الجمهور والعملاء</p>
               </div>
 
-              <form onSubmit={handleSavePrices} className="space-y-4 bg-black/40 border border-zinc-900 p-6 rounded-2xl">
-                <div>
-                  <label className="block text-zinc-400 text-xs font-semibold mb-2">العرض الكلاسيكي تيشرت فردي (Classic Price)</label>
-                  <div className="relative">
-                    <input
-                      type="number"
+              <form onSubmit={handleSavePrices} className="space-y-4 bg-black/40 border border-zinc-900 p-6 rounded-2xl text-right">
+                
+                {/* CHOICE OF BEST DEAL */}
+                <div className="bg-gold/5 border border-gold/20 p-4 rounded-xl space-y-2 mb-4">
+                  <label className="block text-gold text-xs font-bold mb-2 text-right">💎 حدد الباقة المُميّزة (أحسن صفقة / الأكثر طلباً)</label>
+                  <select
+                    value={prices.focusedProduct || 'premium'}
+                    onChange={(e) => setPrices({ ...prices, focusedProduct: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-zinc-900 border border-gold/30 text-gold text-xs font-bold rounded-lg focus:outline-none"
+                  >
+                    <option value="classic">الباقة الكلاسيكية الأساسية (Classic)</option>
+                    <option value="premium">باقة التاج المذهب (Premium)</option>
+                    <option value="duo">عرض الكابلز الثنائي (Duo)</option>
+                  </select>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed text-right mt-1">الباقة التي تحددها هنا ستبرز بلون ذهبي متألق وشريط "أحسن صفقة 🔥" مع تظليل نيون لشد انتباه الزوار.</p>
+                </div>
+
+                {/* CLASSIC PACK CONFIGURATION */}
+                <div className="border border-zinc-900 p-4 rounded-xl space-y-4 bg-zinc-950/40">
+                  <h4 className="text-xs font-extrabold text-white border-b border-zinc-900 pb-2 text-right">1. إعدادات الباقة الكلاسيكية</h4>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">السعر (Classic Price)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        required
+                        value={prices.classicPrice}
+                        onChange={(e) => setPrices({ ...prices, classicPrice: Number(e.target.value) })}
+                        className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none"
+                      />
+                      <span className="absolute left-3 top-2.5 text-[10px] text-zinc-500">جنيه مصري</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">تفاصيل ومميزات الباقة (كل ميزة في سطر منفصل)</label>
+                    <textarea
                       required
-                      value={prices.classicPrice}
-                      onChange={(e) => setPrices({ ...prices, classicPrice: Number(e.target.value) })}
-                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none focus:gold-border"
+                      rows={4}
+                      value={prices.classicDescription}
+                      onChange={(e) => setPrices({ ...prices, classicDescription: e.target.value })}
+                      placeholder="اكتب هنا مواصفات الباقة..."
+                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right"
                     />
-                    <span className="absolute left-3 top-2.5 text-[10px] text-zinc-500">جنيه مصري</span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-zinc-400 text-xs font-semibold mb-2">العرض الفاخر تاج مذهب تيشرت فردي (Premium Price)</label>
-                  <div className="relative">
-                    <input
-                      type="number"
+                {/* PREMIUM PACK CONFIGURATION */}
+                <div className="border border-zinc-900 p-4 rounded-xl space-y-4 bg-zinc-950/40">
+                  <h4 className="text-xs font-extrabold text-white border-b border-zinc-900 pb-2 text-right">2. إعدادات باقة التاج المذهب</h4>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">السعر (Premium Price)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        required
+                        value={prices.premiumPrice}
+                        onChange={(e) => setPrices({ ...prices, premiumPrice: Number(e.target.value) })}
+                        className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none"
+                      />
+                      <span className="absolute left-3 top-2.5 text-[10px] text-zinc-500">جنيه مصري</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">تفاصيل ومميزات الباقة (كل ميزة في سطر منفصل)</label>
+                    <textarea
                       required
-                      value={prices.premiumPrice}
-                      onChange={(e) => setPrices({ ...prices, premiumPrice: Number(e.target.value) })}
-                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none focus:gold-border"
+                      rows={4}
+                      value={prices.premiumDescription}
+                      onChange={(e) => setPrices({ ...prices, premiumDescription: e.target.value })}
+                      placeholder="اكتب هنا مواصفات الباقة..."
+                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right"
                     />
-                    <span className="absolute left-3 top-2.5 text-[10px] text-zinc-500">جنيه مصري</span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-zinc-400 text-xs font-semibold mb-2">العرض الثنائي المشترك تفصيل قطعتين (Duo Price)</label>
-                  <div className="relative">
-                    <input
-                      type="number"
+                {/* DUO PACK CONFIGURATION */}
+                <div className="border border-zinc-900 p-4 rounded-xl space-y-4 bg-zinc-950/40">
+                  <h4 className="text-xs font-extrabold text-white border-b border-zinc-900 pb-2 text-right">3. عرض الكابلز الثنائي</h4>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">السعر (Duo Price)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        required
+                        value={prices.duoPrice}
+                        onChange={(e) => setPrices({ ...prices, duoPrice: Number(e.target.value) })}
+                        className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none"
+                      />
+                      <span className="absolute left-3 top-2.5 text-[10px] text-zinc-500">جنيه مصري</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">تفاصيل ومميزات الباقة (كل ميزة في سطر منفصل)</label>
+                    <textarea
                       required
-                      value={prices.duoPrice}
-                      onChange={(e) => setPrices({ ...prices, duoPrice: Number(e.target.value) })}
-                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none focus:gold-border"
+                      rows={4}
+                      value={prices.duoDescription}
+                      onChange={(e) => setPrices({ ...prices, duoDescription: e.target.value })}
+                      placeholder="اكتب هنا مواصفات الباقة..."
+                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right"
                     />
-                    <span className="absolute left-3 top-2.5 text-[10px] text-zinc-500">جنيه مصري</span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-zinc-400 text-xs font-semibold mb-2">رقم هاتف الواتساب للمبيعات (بالكود الدولي وبدون +)</label>
+                {/* WHATSAPP NUMBER */}
+                <div className="border border-zinc-900 p-4 rounded-xl bg-zinc-950/40 space-y-2">
+                  <label className="block text-zinc-400 text-xs font-semibold mb-1 text-right">رقم هاتف الواتساب للمبيعات (بالكود الدولي وبدون +)</label>
                   <input
                     type="text"
                     required
                     value={prices.whatsappNumber}
                     onChange={(e) => setPrices({ ...prices, whatsappNumber: e.target.value })}
                     placeholder="201223043867"
-                    className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none focus:gold-border"
+                    className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none"
                     style={{ direction: 'ltr' }}
                   />
-                  <span className="text-[10px] text-zinc-500 mt-1 block">الرقم الافتراضي المستخدم لتوجيه المحادثات والطلبات تلقائياً</span>
+                  <span className="text-[10px] text-zinc-500 mt-1 block text-right">الرقم المعتمد لتلقي وإرسال الكتالوج المذهب والتواصل مع العملاء</span>
                 </div>
 
                 <div className="pt-2">
                   <button
                     type="submit"
                     disabled={savingPrices}
-                    className="w-full py-2 bg-gold hover:bg-gold/90 transition-colors text-black font-bold text-xs rounded-lg cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-gold hover:bg-gold/90 transition-colors text-black font-black text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-gold/25"
                   >
-                    {savingPrices ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : 'حفظ التحديثات والأسعار'}
+                    {savingPrices ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : 'حفظ التحديثات الفخمة والأسعار'}
                   </button>
                 </div>
               </form>

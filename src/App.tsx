@@ -6,7 +6,7 @@ import {
 import { 
   collection, query, where, getDocs, addDoc, doc, getDoc, setDoc, serverTimestamp, updateDoc, orderBy 
 } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
+import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
 import { uploadToImgBB } from './lib/imgbb';
 import { Design, AccessCode, Order, User as UserProfile, ConfigApp } from './types';
 import AdminDashboard from './components/AdminDashboard';
@@ -63,9 +63,13 @@ export default function App() {
   // App Config and Prices
   const [configApp, setConfigApp] = useState<ConfigApp>({
     classicPrice: 499,
+    classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• تطريز ذهبي بخيوط فاخرة\n• تغليف راقي كهدية فخمة\n• ضمان استرجاع مجاني لمدة 3 أيام",
     duoPrice: 899,
+    duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• تغليف ملكي خاص بكل قطعة على حدة\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
     premiumPrice: 880,
-    whatsappNumber: '201223043867'
+    premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+    whatsappNumber: '201223043867',
+    focusedProduct: 'premium'
   });
 
   // Client states - Home
@@ -74,6 +78,42 @@ export default function App() {
   const [searchedName, setSearchedName] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Design[]>([]);
   const [hasSearched, setHasSearched] = useState<boolean>(false);
+  const [featuredDesigns, setFeaturedDesigns] = useState<Design[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState<boolean>(false);
+
+  // Fetch Featured designs for homepage display
+  useEffect(() => {
+    async function fetchFeatured() {
+      setLoadingFeatured(true);
+      try {
+        const q = query(
+          collection(db, 'designs'),
+          where('showOnHome', '==', true)
+        );
+        const snap = await getDocs(q);
+        const list: Design[] = [];
+        snap.forEach(docSnap => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as Design);
+        });
+        
+        // Fallback to top 4 designs if none marked
+        if (list.length === 0) {
+          const fallbackSnap = await getDocs(query(collection(db, 'designs')));
+          fallbackSnap.forEach(docSnap => {
+            if (list.length < 4) {
+              list.push({ id: docSnap.id, ...docSnap.data() } as Design);
+            }
+          });
+        }
+        setFeaturedDesigns(list);
+      } catch (err) {
+        console.warn('Error fetching featured designs:', err);
+      } finally {
+        setLoadingFeatured(false);
+      }
+    }
+    fetchFeatured();
+  }, [currentPath]);
 
   // Quick Lead Order Form (For names not found)
   const [leadName, setLeadName] = useState<string>('');
@@ -138,15 +178,31 @@ export default function App() {
         if (!configSnap.exists()) {
           const defaultConfig: ConfigApp = {
             classicPrice: 499,
+            classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• تطريز ذهبي بخيوط فاخرة\n• تغليف راقي كهدية فخمة\n• ضمان استرجاع مجاني لمدة 3 أيام",
             duoPrice: 899,
+            duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• تغليف ملكي خاص بكل قطعة على حدة\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
             premiumPrice: 880,
-            whatsappNumber: '201223043867'
+            premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+            whatsappNumber: '201223043867',
+            focusedProduct: 'premium'
           };
           await setDoc(configDocRef, defaultConfig);
           setConfigApp(defaultConfig);
           console.log('Autoseeded default config App settings successfully.');
         } else {
-          setConfigApp(configSnap.data() as ConfigApp);
+          // If already exists, ensure fields are safe or merge
+          const data = configSnap.data();
+          const merged: ConfigApp = {
+            classicPrice: data.classicPrice || 499,
+            classicDescription: data.classicDescription || "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• تطريز ذهبي بخيوط فاخرة\n• تغليف راقي كهدية فخمة\n• ضمان استرجاع مجاني لمدة 3 أيام",
+            duoPrice: data.duoPrice || 899,
+            duoDescription: data.duoDescription || "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• تغليف ملكي خاص بكل قطعة على حدة\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
+            premiumPrice: data.premiumPrice || 880,
+            premiumDescription: data.premiumDescription || "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+            whatsappNumber: data.whatsappNumber || '201223043867',
+            focusedProduct: data.focusedProduct || 'premium'
+          };
+          setConfigApp(merged);
         }
 
         // 2. Access Codes seeding
@@ -430,15 +486,51 @@ export default function App() {
       }
 
       const codeData = codeSnap.data() as AccessCode;
+      const userEmail = `${formattedCode.toLowerCase()}@esmydahab.com`;
+      const userPassword = `Pass-${formattedCode}`;
+
       if (codeData.used) {
-        setGateError('أوبس! هذا الكود تم استخدامه مسبقاً في تفعيل حساب عميل متميز.');
+        // If the code is already used, try to let them log in as the returning owner of this code.
+        try {
+          await signInWithEmailAndPassword(auth, userEmail, userPassword);
+          localStorage.setItem('esm_code', formattedCode);
+          setCodeInputValue('');
+        } catch (loginErr: any) {
+          console.warn('Email login failed, trying anonymous auth...', loginErr);
+          // Fallback if they registered with anonymous auth before this email/pass update
+          try {
+            await signInAnonymously(auth);
+            localStorage.setItem('esm_code', formattedCode);
+            setCodeInputValue('');
+          } catch (anonErr: any) {
+            setGateError('أوبس! هذا الكود تم استخدامه مسبقاً. إذا كنت صاحب الكود، المرجو التواصل مع الدعم لمساعدتك.');
+          }
+        }
         setCheckingCode(false);
         return;
       }
 
-      // Anonymous Auth creation
-      const userCredential = await signInAnonymously(auth);
-      const uid = userCredential.user.uid;
+      // If code is not used, register them
+      let activeUser;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, userEmail, userPassword);
+        activeUser = userCredential.user;
+      } catch (signUpErr: any) {
+        if (signUpErr.code === 'auth/email-already-in-use') {
+          try {
+            const userCredential = await signInWithEmailAndPassword(auth, userEmail, userPassword);
+            activeUser = userCredential.user;
+          } catch (signInErr) {
+            throw new Error('البريد الإلكتروني المرتبط بالكود مستخدم ولدينا مشكلة في تسجيل دخولك.');
+          }
+        } else {
+          // Fallback to anonymous auth if Email-Password is disabled in client's Firebase Console
+          const userCredential = await signInAnonymously(auth);
+          activeUser = userCredential.user;
+        }
+      }
+
+      const uid = activeUser.uid;
 
       // Mark code as used
       await updateDoc(codeRef, {
@@ -1117,7 +1209,14 @@ export default function App() {
               >
                 {searchResults.length > 0 ? (
                   <div className="space-y-4">
-                    <div className="text-xs text-gold/80 font-bold">وجدنا {searchResults.length} تصميم مذهب تليق بمقام اسمك:</div>
+                    <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-r from-gold/10 via-amber-500/15 to-gold/10 rounded-2xl border border-gold/30 text-center space-y-1">
+                      <div className="text-xs sm:text-sm font-black text-gold flex items-center justify-center gap-2 gold-glow">
+                        <Sparkles className="w-4 h-4 text-gold animate-bounce" />
+                        <span>وجدنا قطعة باسمك!</span>
+                        <Crown className="w-4 h-4 text-gold" />
+                      </div>
+                      <p className="text-[10px] text-zinc-300">لقد حظيت بتصميم مذهب نادر يليق بك تماماً:</p>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {searchResults.map((design) => (
                         <div 
@@ -1231,6 +1330,58 @@ export default function App() {
           </AnimatePresence>
         </section>
 
+        {/* HOMEPAGE FEATURED DESIGNS CATALOGUE */}
+        <section className="space-y-8">
+          <div className="text-center space-y-2">
+            <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">معرض تصاميم الأسياد المحددة</h3>
+            <p className="text-xs text-zinc-400">تصاميم حصرية تم تجهيز خطوطها الفنية لعرض الفخامة الملكية</p>
+          </div>
+
+          {loadingFeatured ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+              {featuredDesigns.map((design) => (
+                <div 
+                  key={design.id}
+                  className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gold/30 hover:shadow-xl hover:shadow-gold/5 transition-all text-center group relative overflow-hidden"
+                >
+                  <div className="h-44 bg-black/60 p-3 rounded-xl flex items-center justify-center border border-zinc-900/60 relative overflow-hidden">
+                    <img 
+                      src={design.imageUrl} 
+                      alt={design.name} 
+                      referrerPolicy="no-referrer"
+                      className="h-full object-contain group-hover:scale-105 transition-all duration-300" 
+                    />
+                    <div className="absolute top-2 right-2 bg-black/80 px-2 py-0.5 rounded text-[8px] font-bold text-gold border border-gold/20 flex items-center gap-0.5">
+                      <Crown className="w-2.5 h-2.5 text-gold" />
+                      <span>تطريز مذهب</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-xs text-white group-hover:text-gold transition-colors">{design.name}</h4>
+                    <p className="text-[10px] text-zinc-500 font-sans">تصميم الكتالوج المميز بـ "إسمي ذهب"</p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const textUrl = `${design.whatsappMessage}\nالتصميم: ${design.imageUrl}`;
+                      window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(textUrl)}`, '_blank');
+                    }}
+                    className="w-full py-2 bg-gradient-to-r from-amber-600 to-gold text-black hover:opacity-90 font-black text-[10px] rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>اطلب هذا التصميم الفخم</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* PRICING PLANS SECTION */}
         <section className="space-y-8">
           <div className="text-center space-y-2">
@@ -1239,82 +1390,82 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Package 1: Classic */}
-            <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-6 text-center hover:border-gold/20 transition-all flex flex-col justify-between space-y-6">
-              <div className="space-y-3">
-                <span className="text-[9px] font-bold px-2 py-1 bg-zinc-900 rounded text-zinc-400 uppercase tracking-widest">العرض الفردي الأساسي</span>
-                <h4 className="text-md sm:text-lg font-bold font-serif silver-gradient">الباقة الكلاسيكية</h4>
-                <div className="font-mono text-2xl font-black text-white gold-glow">{configApp.classicPrice} <span className="text-xs">EGP</span></div>
-                <p className="text-[10px] text-zinc-500 leading-relaxed font-sans">تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل، قصة عصرية مبهرة مطرز بالاسم بخيط مذهب.</p>
-              </div>
-              <ul className="text-[10px] text-zinc-400 space-y-2 text-right mr-3 list-inside list-disc">
-                <li>قطن مصري 100% ثقيل للغاية.</li>
-                <li>تطريز ذهبي بخيوط فاخرة.</li>
-                <li>تعبئة وتغليف راقي كهدية.</li>
-                <li>ضمان استرجاع مجاني لمدة 3 أيام.</li>
-              </ul>
-              <button
-                onClick={() => {
-                  const target = document.getElementById('search-section');
-                  target?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-black border border-zinc-800 cursor-pointer text-center"
-              >
-                تصفح واطلب نسختك
-              </button>
-            </div>
+            {[
+              {
+                id: 'classic',
+                name: 'الباقة الكلاسيكية',
+                sub: 'العرض الفردي الأساسي',
+                price: configApp.classicPrice,
+                description: configApp.classicDescription,
+                colorClass: 'silver-gradient',
+                btnText: 'تصفح واطلب نسختك'
+              },
+              {
+                id: 'premium',
+                name: 'باقة التاج المذهب',
+                sub: 'هيبة الملوك والأسياد',
+                price: configApp.premiumPrice,
+                description: configApp.premiumDescription,
+                colorClass: 'gold-gradient',
+                btnText: 'تصفح واطلب نسختك'
+              },
+              {
+                id: 'duo',
+                name: 'عرض الكابلز الثنائي',
+                sub: 'عرض ترويجي استثنائي',
+                price: configApp.duoPrice,
+                description: configApp.duoDescription,
+                colorClass: 'silver-gradient',
+                btnText: 'اطلب العرض الثنائي'
+              }
+            ].map((pkg) => {
+              const isFocused = configApp.focusedProduct === pkg.id;
+              return (
+                <div 
+                  key={pkg.id}
+                  className={`bg-zinc-950 rounded-3xl p-6 text-center hover:shadow-2xl transition-all flex flex-col justify-between space-y-6 relative overflow-hidden ${
+                    isFocused 
+                      ? 'border-2 border-gold shadow-md shadow-gold/5 transform md:-translate-y-2' 
+                      : 'border border-zinc-900 hover:border-gold/20'
+                  }`}
+                >
+                  {isFocused && (
+                    <div className="absolute top-0 right-0 bg-gold text-black text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest animate-pulse">
+                      أحسن صفقة 🔥
+                    </div>
+                  )}
+                  
+                  <div className="space-y-3 pt-2">
+                    <span className={`text-[9px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
+                      isFocused ? 'bg-gold/15 text-gold border border-gold/30 font-bold' : 'bg-zinc-900 text-zinc-400'
+                    }`}>
+                      {pkg.sub}
+                    </span>
+                    <h4 className={`text-sm sm:text-md font-bold font-serif ${isFocused ? 'gold-gradient font-black' : pkg.colorClass}`}>{pkg.name}</h4>
+                    <div className={`font-mono text-2xl font-black ${isFocused ? 'text-gold gold-glow' : 'text-white'}`}>
+                      {pkg.price} <span className="text-xs">EGP</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-350 leading-relaxed font-sans whitespace-pre-line text-right mr-1 bg-black/40 p-4 rounded-2xl border border-zinc-900/50">
+                      {pkg.description}
+                    </p>
+                  </div>
 
-            {/* Package 2: Premium (MAIN FEATURING) */}
-            <div className="bg-zinc-950 border-2 border-gold rounded-3xl p-6 text-center transform md:-translate-y-2 hover:shadow-2xl hover:shadow-gold/5 transition-all flex flex-col justify-between space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-gold text-black text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest">الأعلى طلباً ⭐</div>
-              
-              <div className="space-y-3 pt-2">
-                <span className="text-[9px] font-bold px-2 py-1 bg-gold/15 text-gold border border-gold/30 rounded uppercase tracking-widest">هيبة الملوك والأسياد</span>
-                <h4 className="text-md sm:text-lg font-black font-serif gold-gradient">باقة التاج المذهب</h4>
-                <div className="font-mono text-2xl font-black text-gold gold-glow">{configApp.premiumPrice} <span className="text-xs">EGP</span></div>
-                <p className="text-[10px] text-zinc-400 leading-relaxed font-sans">تيشرت وان سايز مطرز بالاسم مع التاج الملكي المذهب المائل مستوحى من هيبة الأسياد.</p>
-              </div>
-              <ul className="text-[10px] text-zinc-300 space-y-2 text-right mr-3 list-inside list-disc">
-                <li>تطريز مذهب بالاسم مع تصميم التاج الملكي.</li>
-                <li>قطن مصري ثقيل القوام مريح للغاية.</li>
-                <li>يتضمن كارت VIP وباقة ملصقات مذهبة.</li>
-                <li>دخول مجاني مدى الحياة لبوابة النفاذ VIP.</li>
-              </ul>
-              <button
-                onClick={() => {
-                  const target = document.getElementById('search-section');
-                  target?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full py-2.5 bg-gold text-black hover:bg-gold/90 rounded-xl text-xs font-black shadow-lg shadow-gold/15 cursor-pointer text-center"
-              >
-                تصفح واطلب نسختك
-              </button>
-            </div>
-
-            {/* Package 3: Duo */}
-            <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-6 text-center hover:border-gold/20 transition-all flex flex-col justify-between space-y-6">
-              <div className="space-y-3">
-                <span className="text-[9px] font-bold px-2 py-1 bg-zinc-900 rounded text-zinc-400 uppercase tracking-widest">عرض ترويجي استثنائي</span>
-                <h4 className="text-md sm:text-lg font-bold font-serif silver-gradient">عرض التبادل الثنائي (الكابلز)</h4>
-                <div className="font-mono text-2xl font-black text-white gold-glow">{configApp.duoPrice} <span className="text-xs">EGP</span></div>
-                <p className="text-[10px] text-zinc-500 leading-relaxed font-sans">قطعتين تيشيرت بـ اسمين مختلفين مذهبين من اختيارك، هدية مثالية لشريك دروبك الفخم.</p>
-              </div>
-              <ul className="text-[10px] text-zinc-400 space-y-2 text-right mr-3 list-inside list-disc">
-                <li>قطعتين قطن مذهبتين باسمين من اختيارك.</li>
-                <li>توفير استثنائي بقيمة 120 جنيه مصري.</li>
-                <li>تغليف ملكي خاص بكل قطعة على حدة.</li>
-                <li>دخول كود ثنائي بوابة VIP apps.</li>
-              </ul>
-              <button
-                onClick={() => {
-                  const target = document.getElementById('search-section');
-                  target?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-black border border-zinc-800 cursor-pointer text-center"
-              >
-                اطلب العرض الثنائي
-              </button>
-            </div>
+                  <button
+                    onClick={() => {
+                      const target = document.getElementById('search-section');
+                      target?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className={`w-full py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
+                      isFocused 
+                        ? 'bg-gold text-black hover:bg-gold/90 shadow-lg shadow-gold/15' 
+                        : 'bg-zinc-900 hover:bg-zinc-805 hover:bg-zinc-800 text-white border border-zinc-800'
+                    }`}
+                  >
+                    {pkg.btnText}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
 

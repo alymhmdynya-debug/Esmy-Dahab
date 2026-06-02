@@ -1,8 +1,12 @@
 export interface ConfigApp {
   classicPrice: number;
+  classicDescription: string;
   duoPrice: number;
+  duoDescription: string;
   premiumPrice: number;
+  premiumDescription: string;
   whatsappNumber: string;
+  focusedProduct: 'classic' | 'duo' | 'premium';
 }
 
 export interface Design {
@@ -12,6 +16,7 @@ export interface Design {
   searchTags: string[];
   whatsappMessage: string;
   createdAt: any; // Firestore Timestamp or serverTimestamp
+  showOnHome?: boolean;
 }
 
 export interface AccessCode {

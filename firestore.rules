@@ -33,9 +33,13 @@ service cloud.firestore {
     // Entity validations
     function isValidConfigApp(data) {
       return data.classicPrice is number
+        && data.classicDescription is string && data.classicDescription.size() <= 2000
         && data.duoPrice is number
+        && data.duoDescription is string && data.duoDescription.size() <= 2000
         && data.premiumPrice is number
-        && data.whatsappNumber is string && data.whatsappNumber.size() <= 50;
+        && data.premiumDescription is string && data.premiumDescription.size() <= 2000
+        && data.whatsappNumber is string && data.whatsappNumber.size() <= 50
+        && data.focusedProduct in ['classic', 'duo', 'premium'];
     }
 
     function isValidDesign(data) {
@@ -43,7 +47,8 @@ service cloud.firestore {
         && data.name is string && data.name.size() <= 200
         && data.imageUrl is string && data.imageUrl.size() <= 2048
         && data.searchTags is list && data.searchTags.size() <= 30
-        && data.whatsappMessage is string && data.whatsappMessage.size() <= 2048;
+        && data.whatsappMessage is string && data.whatsappMessage.size() <= 2048
+        && (data.showOnHome == null || data.showOnHome is bool);
     }
 
     function isValidAccessCode(data) {
