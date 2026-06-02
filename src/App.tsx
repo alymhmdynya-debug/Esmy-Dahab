@@ -118,10 +118,24 @@ export default function App() {
   // Quick Lead Order Form (For names not found)
   const [leadName, setLeadName] = useState<string>('');
   const [leadPhone, setLeadPhone] = useState<string>('');
-  const [leadFabric, setLeadFabric] = useState<'Classic' | 'Premium'>('Premium');
+  const [leadFabric, setLeadFabric] = useState<string>('Premium');
   const [leadNotes, setLeadNotes] = useState<string>('');
   const [submittingLead, setSubmittingLead] = useState<boolean>(false);
   const [leadSuccess, setLeadSuccess] = useState<boolean>(false);
+
+  // Fullscreen Image Viewer Modal state
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+
+  // Custom Order Form state ("مش لاقي اسمك؟")
+  const [showCustomOrderForm, setShowCustomOrderForm] = useState<boolean>(false);
+  const [customNameAr, setCustomNameAr] = useState<string>('');
+  const [customNameEn, setCustomNameEn] = useState<string>('');
+  const [customPhone, setCustomPhone] = useState<string>('');
+  const [customNotes, setCustomNotes] = useState<string>('');
+  const [customFabric, setCustomFabric] = useState<string>('');
+  const [customOrderSuccess, setCustomOrderSuccess] = useState<boolean>(false);
+  const [submittingCustomOrder, setSubmittingCustomOrder] = useState<boolean>(false);
+  const [customOrderError, setCustomOrderError] = useState<string>('');
 
   // Policy Modal
   const [isPolicyOpen, setIsPolicyOpen] = useState<boolean>(false);
@@ -235,6 +249,12 @@ export default function App() {
         // 1. Config seeding
         const configDocRef = doc(db, 'config', 'app');
         const configSnap = await getDoc(configDocRef);
+        const defaultTypes = [
+          { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+          { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+          { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+        ];
+
         if (!configSnap.exists()) {
           const defaultConfig: ConfigApp = {
             classicPrice: 499,
@@ -244,7 +264,8 @@ export default function App() {
             premiumPrice: 880,
             premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: '201223043867',
-            focusedProduct: 'premium'
+            focusedProduct: 'premium',
+            types: defaultTypes
           };
           await setDoc(configDocRef, defaultConfig);
           setConfigApp(defaultConfig);
@@ -260,7 +281,8 @@ export default function App() {
             premiumPrice: data.premiumPrice || 880,
             premiumDescription: data.premiumDescription || "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: data.whatsappNumber || '201223043867',
-            focusedProduct: data.focusedProduct || 'premium'
+            focusedProduct: data.focusedProduct || 'premium',
+            types: data.types || defaultTypes
           };
           setConfigApp(merged);
         }
@@ -656,6 +678,79 @@ export default function App() {
     }
   };
 
+  // Custom order submission ("مش لاقي اسمي")
+  const handleCustomOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomOrderError('');
+
+    // 1. Mandatory Arabic check
+    const trimmedAr = customNameAr.trim();
+    if (!trimmedAr) {
+      setCustomOrderError('يرجى ملء حقل الاسم بالعربي (حقل إجباري)!');
+      return;
+    }
+    const hasArabicRegex = /[\u0600-\u06FF]/;
+    if (!hasArabicRegex.test(trimmedAr)) {
+      setCustomOrderError('الاسم بالعربي يجب أن يحتوي على حروف عربية صالحة وفخمة 👑');
+      return;
+    }
+
+    // 2. Mandatory Phone check
+    const trimmedPhone = customPhone.trim();
+    if (!trimmedPhone) {
+      setCustomOrderError('يرجى كتابة رقم هاتف الواتس الخاص بكم لتسهيل التواصل الفوري!');
+      return;
+    }
+
+    setSubmittingCustomOrder(true);
+    try {
+      const orderId = doc(collection(db, 'orders')).id;
+      
+      const defaultTypes = [
+        { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+        { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+        { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+      ];
+      
+      const availableTypes = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
+      const selectedType = availableTypes.find(t => t.id === customFabric || t.name === customFabric) || availableTypes[0];
+      const finalFabricName = selectedType.name;
+
+      const formattedDisplayName = customNameEn.trim() 
+        ? `${trimmedAr} (${customNameEn.trim()})` 
+        : trimmedAr;
+
+      const orderData: Order = {
+        id: orderId,
+        name: formattedDisplayName,
+        phone: trimmedPhone,
+        fabric: finalFabricName as any,
+        notes: customNotes.trim() || 'طلب تخصيص قطعة مذهبة نادرة بالاسم.',
+        designId: 'custom_order_form',
+        status: 'pending',
+        createdAt: serverTimestamp()
+      };
+
+      // Store in firestore
+      await setDoc(doc(db, 'orders', orderId), orderData);
+      setCustomOrderSuccess(true);
+
+      // Craft beautiful WhatsApp message (WITHOUT customer's phone number as requested for privacy/cleanliness)
+      const textMsg = `أهلاً براند إسمي ذهب الفخم 👑\n\nلقد قمت للتو بطلب تصميم ملكي مخصص بالاسم عبر الموقع:\n- الاسم المطلوب (بالعربي): ${trimmedAr}\n- الاسم المطلوب (بالإنجليزي): ${customNameEn.trim() || 'لا يوجد'}\n- نوع وخامة التيشرت: ${selectedType.name} (${selectedType.priceLabel})\n- ملاحظات وتعديلات خاصة: ${customNotes.trim() || 'لا يوجد'}\n\nبرجاء تأكيد حجز هذا الطلب الملكي الفاخر والبدء الفوري ⚡`;
+      const encodedText = encodeURIComponent(textMsg);
+
+      setTimeout(() => {
+        window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodedText}`, '_blank');
+      }, 1000);
+
+    } catch (err) {
+      console.error('Error submitting custom order:', err);
+      setCustomOrderError('عذراً، حدث خطأ أثناء إرسال طلبكم الفاخر. يرجى تكرار المحاولة بعدها.');
+    } finally {
+      setSubmittingCustomOrder(false);
+    }
+  };
+
   // Check VIP code in gate
   const handleGateVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1016,7 +1111,12 @@ export default function App() {
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                       />
                       {setupPreview ? (
-                        <img src={setupPreview} alt="Wearable" className="h-20 w-20 rounded-xl object-cover" />
+                        <img 
+                          src={setupPreview} 
+                          alt="Wearable" 
+                          className="h-20 w-20 rounded-xl object-cover cursor-zoom-in hover:brightness-110 transition-all" 
+                          onClick={() => setFullscreenImage(setupPreview)}
+                        />
                       ) : (
                         <div className="space-y-1">
                           <UploadCloud className="w-6 h-6 text-zinc-600 mx-auto" />
@@ -1058,7 +1158,8 @@ export default function App() {
                     <img 
                       src={userProfile.photoUrl} 
                       alt={userProfile.displayName} 
-                      className="w-24 h-24 rounded-full object-cover border-2 border-gold shadow-md"
+                      className="w-24 h-24 rounded-full object-cover border-2 border-gold shadow-md cursor-zoom-in hover:brightness-110 transition-all"
+                      onClick={() => setFullscreenImage(userProfile.photoUrl)}
                     />
                     {userProfile.level === 3 && (
                       <div className="absolute -top-3 -right-3 bg-black border border-gold rounded-full p-1.5 shadow shadow-gold/40">
@@ -1339,7 +1440,8 @@ export default function App() {
                 <img 
                   src={publicProfile.photoUrl} 
                   alt={publicProfile.displayName} 
-                  className="w-28 h-28 rounded-full object-cover border-4 border-gold mx-auto shadow-xl"
+                  className="w-28 h-28 rounded-full object-cover border-4 border-gold mx-auto shadow-xl cursor-zoom-in hover:brightness-110 transition-all"
+                  onClick={() => setFullscreenImage(publicProfile.photoUrl)}
                 />
                 {publicProfile.level === 3 && (
                   <div className="absolute top-0 right-0 bg-black border border-gold rounded-full p-2 shadow-lg shadow-gold/40">
@@ -1566,7 +1668,12 @@ export default function App() {
                           className="bg-black/60 border border-zinc-800 hover:border-gold/30 rounded-2xl p-4 flex gap-4 items-center transition-all group relative overflow-hidden"
                         >
                           <div className="w-20 h-20 bg-zinc-950 p-1.5 rounded-xl flex items-center justify-center border border-zinc-900">
-                            <img src={design.imageUrl} alt={design.name} className="h-full object-contain group-hover:scale-105 transition-transform" />
+                            <img 
+                              src={design.imageUrl} 
+                              alt={design.name} 
+                              className="h-full object-contain group-hover:scale-105 transition-transform cursor-zoom-in hover:brightness-110" 
+                              onClick={() => setFullscreenImage(design.imageUrl)}
+                            />
                           </div>
                           
                           <div className="flex-grow space-y-1 text-right">
@@ -1670,6 +1777,167 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Custom Royal Order Toggle & Form */}
+          <div className="pt-4 border-t border-zinc-900 flex flex-col items-center gap-3">
+            <p className="text-[11px] text-zinc-400 text-center">مش لاقي اسمك في كتالوج تصاميم الأسياد؟ لا تقلق!</p>
+            <button
+              type="button"
+              id="toggle-custom-form-btn"
+              onClick={() => {
+                setShowCustomOrderForm(!showCustomOrderForm);
+                if (!customFabric) {
+                  const defaultTypes = [
+                    { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+                    { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+                    { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+                  ];
+                  const available = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
+                  setCustomFabric(available[0].id || available[0].name);
+                }
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-gold/15 to-gold/5 border border-gold/30 hover:border-gold rounded-full text-[11px] font-extrabold tracking-wide text-gold cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-gold/15"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-gold gold-glow animate-pulse" />
+              <span>{showCustomOrderForm ? 'إغلاق فورم الطلب الخاص ❌' : 'تصميم وتدوين اسمك مخصوص بالخط العربي الفخم 👑'}</span>
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showCustomOrderForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden pt-4 border-t border-zinc-900 space-y-4 text-right"
+              >
+                <div className="p-4 bg-amber-500/5 border border-gold/20 rounded-2xl text-center space-y-1">
+                  <h4 className="text-xs font-black text-gold gold-glow flex items-center justify-center gap-1">
+                    <Crown className="w-3.5 h-3.5 text-gold" />
+                    <span>مواصفات واستمارة تفصيل الاسم الملكي المخصوص</span>
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed">
+                    قم بتعبئة الاستمارة التالية، وسيتم إدراج طلبك فوراً في لوحة تحكم المصنع وتوجيهك لتنسيق الشحن وهدية التغليف.
+                  </p>
+                </div>
+
+                {customOrderSuccess ? (
+                  <div className="p-4 bg-gold/10 border border-gold/30 text-gold text-xs rounded-xl font-bold font-sans text-center space-y-2">
+                    <div className="font-extrabold">🏆 لقد تم تسجيل وحجز أوردر تخصيص تيشيرت اسمك بنجاح!</div>
+                    <div className="text-[10px] text-zinc-400 font-mono">جاري الآن نقلك وتوجيهك لفتح محادثة واتساب مع براند الأسياد لإكمال التصميم الفخم...</div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleCustomOrderSubmit} id="custom-royal-order-form" className="space-y-4">
+                    {customOrderError && (
+                      <div className="p-2.5 bg-red-950/20 border border-red-950 text-red-400 text-[10px] rounded-lg text-center font-bold">
+                        ⚠️ {customOrderError}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
+                      <div>
+                        <label className="block text-zinc-400 text-[10px] font-bold mb-1 mr-1">الاسم باللغة العربية (إجباري) ✍️</label>
+                        <input
+                          type="text"
+                          required
+                          value={customNameAr}
+                          onChange={(e) => setCustomNameAr(e.target.value)}
+                          placeholder="مثلاً: يوسف أو مريم"
+                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold text-right"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-zinc-500 text-[10px] font-semibold mb-1 mr-1">الاسم بالإنجليزية (اختياري) 🔠</label>
+                        <input
+                          type="text"
+                          value={customNameEn}
+                          onChange={(e) => setCustomNameEn(e.target.value)}
+                          placeholder="مثلاً: Joseph or Mary"
+                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold text-right"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
+                      <div>
+                        <label className="block text-zinc-400 text-[10px] font-bold mb-1 mr-1">رقم جوال الواتساب للمتابعة 📱</label>
+                        <input
+                          type="tel"
+                          required
+                          value={customPhone}
+                          onChange={(e) => setCustomPhone(e.target.value)}
+                          placeholder="مثال: 201200000000"
+                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold"
+                          style={{ direction: 'ltr' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-zinc-400 text-[10px] font-bold mb-1 mr-1">اختر نوع تيشيرت وخامة الأسياد 👕</label>
+                        <select
+                          value={customFabric}
+                          onChange={(e) => setCustomFabric(e.target.value)}
+                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold font-bold text-right"
+                        >
+                          {(configApp.types && configApp.types.length > 0 ? configApp.types : [
+                            { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+                            { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+                            { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+                          ]).map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 text-right">
+                      <label className="block text-zinc-550 text-[10px] font-semibold mb-1 mr-1">ملاحظات، مقاسات أو تعديلات مخصصة لشكل القطعة 🎨</label>
+                      <textarea
+                        rows={2}
+                        value={customNotes}
+                        onChange={(e) => setCustomNotes(e.target.value)}
+                        placeholder="اكتب هنا المقاس المطلوب (مثل XL أو Oversized) وأي ألوان خيوط ترغب في تفضيلها..."
+                        className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold text-right"
+                      />
+                    </div>
+
+                    {/* DYNAMIC PRICE LABEL BASED ON SELECTION */}
+                    {(() => {
+                      const defaultTypes = [
+                        { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+                        { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+                        { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+                      ];
+                      const available = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
+                      const selected = available.find(t => t.id === customFabric || t.name === customFabric) || available[0];
+                      return selected ? (
+                        <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-zinc-850 p-3 rounded-2xl text-center space-y-0.5">
+                          <span className="text-[10px] text-zinc-400 block">مواصفات وسعر هذه الخامة المحددة:</span>
+                          <span className="text-xs font-black text-gold font-sans gold-glow leading-relaxed">{selected.priceLabel}</span>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    <button
+                      type="submit"
+                      disabled={submittingCustomOrder}
+                      className="w-full py-2.5 bg-gradient-to-r from-gold via-yellow-500 to-gold text-black text-xs font-black rounded-xl transition-all hover:opacity-95 flex items-center justify-center gap-1.5 shadow-lg shadow-gold/25 cursor-pointer"
+                    >
+                      {submittingCustomOrder ? (
+                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Crown className="w-4 h-4 text-black animate-pulse" />
+                          <span>تأكيد طلب التفصيل الملكي المخصوص</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
         {/* HOMEPAGE FEATURED DESIGNS CATALOGUE */}
@@ -1695,7 +1963,8 @@ export default function App() {
                       src={design.imageUrl} 
                       alt={design.name} 
                       referrerPolicy="no-referrer"
-                      className="h-full object-contain group-hover:scale-105 transition-all duration-300" 
+                      className="h-full object-contain group-hover:scale-105 transition-all duration-300 cursor-zoom-in hover:brightness-110" 
+                      onClick={() => setFullscreenImage(design.imageUrl)}
                     />
                     <div className="absolute top-2 right-2 bg-black/80 px-2 py-0.5 rounded text-[8px] font-bold text-gold border border-gold/20 flex items-center gap-0.5">
                       <Crown className="w-2.5 h-2.5 text-gold" />
@@ -1764,7 +2033,8 @@ export default function App() {
                         <img 
                           src={leaderboard[1].photoUrl} 
                           alt={leaderboard[1].displayName} 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-zinc-400/60"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-zinc-400/60 cursor-zoom-in hover:brightness-110 transition-all"
+                          onClick={() => setFullscreenImage(leaderboard[1].photoUrl)}
                         />
                         <div>
                           <h4 className="font-extrabold text-xs text-white">{leaderboard[1].displayName}</h4>
@@ -1800,7 +2070,8 @@ export default function App() {
                         <img 
                           src={leaderboard[0].photoUrl} 
                           alt={leaderboard[0].displayName} 
-                          className="w-20 h-20 rounded-full object-cover border-2 border-gold shadow-md"
+                          className="w-20 h-20 rounded-full object-cover border-2 border-gold shadow-md cursor-zoom-in hover:brightness-110 transition-all"
+                          onClick={() => setFullscreenImage(leaderboard[0].photoUrl)}
                         />
                         <div>
                           <h4 className="font-black text-sm text-gold font-serif gold-gradient">{leaderboard[0].displayName}</h4>
@@ -1835,7 +2106,8 @@ export default function App() {
                         <img 
                           src={leaderboard[2].photoUrl} 
                           alt={leaderboard[2].displayName} 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-amber-800/60"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-amber-800/60 cursor-zoom-in hover:brightness-110 transition-all"
+                          onClick={() => setFullscreenImage(leaderboard[2].photoUrl)}
                         />
                         <div>
                           <h4 className="font-extrabold text-xs text-white">{leaderboard[2].displayName}</h4>
@@ -2145,6 +2417,48 @@ export default function App() {
 
       {/* RETURN POLICY MODAL POPUP */}
       <ReturnPolicy isOpen={isPolicyOpen} onClose={() => setIsPolicyOpen(false)} />
+
+      {/* FULLSCREEN IMAGE VIEWER MODAL */}
+      <AnimatePresence>
+        {fullscreenImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFullscreenImage(null)}
+            className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 cursor-zoom-out backdrop-blur-md"
+          >
+            {/* Close Button top corner */}
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-6 right-6 text-white hover:text-gold bg-zinc-900/85 hover:bg-zinc-800 p-3 rounded-full cursor-pointer transition-all border border-zinc-800 shadow-xl flex items-center justify-center"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Main Fullscreen Image Container */}
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="max-w-4xl max-h-[85vh] relative flex flex-col justify-center items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={fullscreenImage}
+                alt="Fullscreen Premium Wearable Design"
+                className="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl border border-zinc-900 shadow-gold/5"
+                referrerPolicy="no-referrer"
+              />
+              <span className="text-[10px] text-zinc-500 mt-3 font-mono text-center">انقر في أي مكان خارج الصورة أو الزر للعودة</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

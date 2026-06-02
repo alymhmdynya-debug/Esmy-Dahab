@@ -42,9 +42,15 @@ export default function AdminDashboard() {
     premiumPrice: 880,
     premiumDescription: '',
     whatsappNumber: '201223043867',
-    focusedProduct: 'premium'
+    focusedProduct: 'premium',
+    types: []
   });
   const [savingPrices, setSavingPrices] = useState<boolean>(false);
+
+  // Dynamic Custom Types inputs for the brand (الأنواع والخامات المتاحة)
+  const [newTypeName, setNewTypeName] = useState<string>('');
+  const [newTypePriceLabel, setNewTypePriceLabel] = useState<string>('');
+  const [newTypePriceValue, setNewTypePriceValue] = useState<number>(0);
 
   // Designs inputs and Editing configuration structures
   const [designs, setDesigns] = useState<Design[]>([]);
@@ -96,6 +102,12 @@ export default function AdminDashboard() {
       try {
         const docRef = doc(db, 'config', 'app');
         const snap = await getDoc(docRef);
+        const defaultTypes = [
+          { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+          { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+          { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+        ];
+
         if (snap.exists()) {
           const data = snap.data();
           setPrices({
@@ -106,11 +118,14 @@ export default function AdminDashboard() {
             premiumPrice: data.premiumPrice ?? 880,
             premiumDescription: data.premiumDescription ?? '',
             whatsappNumber: data.whatsappNumber ?? '201223043867',
-            focusedProduct: data.focusedProduct ?? 'premium'
+            focusedProduct: data.focusedProduct ?? 'premium',
+            types: data.types ?? defaultTypes
           });
         } else {
           // Initialize if absent
-          await setDoc(docRef, prices);
+          const iniPrices = { ...prices, types: defaultTypes };
+          await setDoc(docRef, iniPrices);
+          setPrices(iniPrices);
         }
       } catch (err) {
         console.error('Error loading config/app:', err);
@@ -551,8 +566,8 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="py-4">
-                            <span className={`px-2 py-0.5 text-[10px] rounded font-bold ${o.fabric === 'Premium' ? 'bg-amber-950 text-gold border border-gold/20' : 'bg-zinc-900 text-zinc-300'}`}>
-                              {o.fabric === 'Premium' ? 'بريميوم مذهب' : 'كلاسيك'}
+                            <span className="px-2 py-0.5 text-[10px] rounded font-bold bg-amber-950 text-gold border border-gold/25">
+                              {o.fabric || 'بريميوم مذهب'}
                             </span>
                             {o.designId && (
                               <div className="text-[10px] text-zinc-500 mt-1">اسم الكود: {o.designId}</div>
@@ -1051,6 +1066,103 @@ export default function AdminDashboard() {
                     style={{ direction: 'ltr' }}
                   />
                   <span className="text-[10px] text-zinc-500 mt-1 block text-right">الرقم المعتمد لتلقي وإرسال الكتالوج المذهب والتواصل مع العملاء</span>
+                </div>
+
+                {/* DYNAMIC TYPES / Kinds SECTION */}
+                <div className="border border-zinc-900 p-4 rounded-xl space-y-4 bg-zinc-950/40 text-right">
+                  <h4 className="text-xs font-extrabold text-gold border-b border-zinc-900 pb-2 text-right">🏷️ الأنواع والخامات المخصصة بالكتالوج المفتوح</h4>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed text-right">
+                    هنا يمكنك تحديد الخامات المتاحة للاختيار (مثل: قطن مصري، بريميوم، ثقيل...) وسعرها أو الوصف المالي الملحق بها. وسيظهر للعملاء في فورم الطلب المخصص.
+                  </p>
+
+                  {/* List Current Types */}
+                  <div className="space-y-2">
+                    {(prices.types || []).map((t, idx) => (
+                      <div key={t.id || idx} className="flex justify-between items-center bg-black/40 border border-zinc-900 p-3 rounded-lg text-xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updatedTypes = (prices.types || []).filter((_, i) => i !== idx);
+                            setPrices({ ...prices, types: updatedTypes });
+                          }}
+                          className="text-red-400 hover:text-red-300 font-bold px-2 py-1 bg-red-955 bg-red-950/10 border border-red-900/30 rounded cursor-pointer transition-colors"
+                        >
+                          حذف 🗑️
+                        </button>
+                        <div className="text-right space-y-0.5">
+                          <div className="font-extrabold text-white">{t.name}</div>
+                          <div className="text-[10px] text-zinc-400">
+                            الوصف السعري: <span className="text-gold font-bold">{t.priceLabel}</span> | القيمة المحسوبة: <span className="font-mono text-zinc-300">{t.priceValue} ج.م</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(prices.types || []).length === 0 && (
+                      <div className="text-center py-4 bg-black/20 text-[11px] text-zinc-500 rounded border border-dashed border-zinc-900">
+                        لا توجد خامات مخصصة، سيتم الرجوع إلى الخامات التلقائية.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add New Type Module */}
+                  <div className="bg-black/50 border border-zinc-900 p-3 rounded-lg space-y-3">
+                    <h5 className="text-[11px] font-bold text-zinc-300 text-right">✨ إضافة خامة أو خيار جديد لموديلات التيشرتات:</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-zinc-500 text-[9px] mb-1 text-right">قيمة السعر الفعلي (تحديد رقمي اختياري)</label>
+                        <input
+                          type="number"
+                          value={newTypePriceValue}
+                          onChange={(e) => setNewTypePriceValue(Number(e.target.value))}
+                          placeholder="مثلاً: 880"
+                          className="w-full px-2 py-1.5 bg-zinc-905 bg-zinc-900 border border-zinc-800 text-white rounded text-xs leading-relaxed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 text-[9px] mb-1 text-right">نص السعر المكتوب (مثلاً: "السعر مفاجئة" أو "السعر: 880 جنيه")</label>
+                        <input
+                          type="text"
+                          value={newTypePriceLabel}
+                          onChange={(e) => setNewTypePriceLabel(e.target.value)}
+                          placeholder='مثلاً: السعر: 880 ج.م'
+                          className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-white rounded text-xs text-right leading-relaxed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 text-[9px] mb-1 text-right">اسم الخامة المنسدلة / نوع التيشرت</label>
+                        <input
+                          type="text"
+                          value={newTypeName}
+                          onChange={(e) => setNewTypeName(e.target.value)}
+                          placeholder="مثلاً: تيشيرت التاج المذهب الملكي"
+                          className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-white rounded text-xs text-right leading-relaxed"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newTypeName || !newTypePriceLabel) {
+                          alert('يرجى كتابة الاسم ووصف السعر!');
+                          return;
+                        }
+                        const newTypeItem = {
+                          id: 'type_' + Date.now().toString(36),
+                          name: newTypeName.trim(),
+                          priceLabel: newTypePriceLabel.trim(),
+                          priceValue: Number(newTypePriceValue) || 0
+                        };
+                        const updated = [...(prices.types || []), newTypeItem];
+                        setPrices({ ...prices, types: updated });
+                        setNewTypeName('');
+                        setNewTypePriceLabel('');
+                        setNewTypePriceValue(0);
+                      }}
+                      className="w-full py-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/30 rounded text-xs font-bold transition-all cursor-pointer text-center"
+                    >
+                      إضافة لخامات ومقاسات الموديلات ➕
+                    </button>
+                  </div>
                 </div>
 
                 <div className="pt-2">

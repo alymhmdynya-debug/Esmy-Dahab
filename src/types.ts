@@ -1,3 +1,10 @@
+export interface FabricType {
+  id: string;
+  name: string;
+  priceLabel: string; // "السعر: 880 جنيه" or "السعر مفاجئة"
+  priceValue: number;
+}
+
 export interface ConfigApp {
   classicPrice: number;
   classicDescription: string;
@@ -7,6 +14,7 @@ export interface ConfigApp {
   premiumDescription: string;
   whatsappNumber: string;
   focusedProduct: 'classic' | 'duo' | 'premium';
+  types?: FabricType[];
 }
 
 export interface Design {
