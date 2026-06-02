@@ -165,6 +165,55 @@ export default function App() {
   const [loadingPublicProfile, setLoadingPublicProfile] = useState<boolean>(false);
   const [hasLikedPublic, setHasLikedPublic] = useState<boolean>(false);
 
+  // PWA customized installation states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState<boolean>(false);
+
+  // Install custom PWA prompts listener
+  useEffect(() => {
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallBtn(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  // Dynamically configure and inject manifest based on current profile
+  useEffect(() => {
+    let usernameForManifest = '';
+    if (userProfile && userProfile.username) {
+      usernameForManifest = userProfile.username.toLowerCase();
+    } else if (publicProfile && publicProfile.username) {
+      usernameForManifest = publicProfile.username.toLowerCase();
+    }
+
+    // Always clean up existing dynamic manifest link first
+    const existingManifestLink = document.getElementById('dynamic-manifest');
+    if (existingManifestLink) {
+      existingManifestLink.remove();
+    }
+
+    if (usernameForManifest) {
+      const link = document.createElement('link');
+      link.id = 'dynamic-manifest';
+      link.rel = 'manifest';
+      link.href = `/${usernameForManifest}/manifest.json`;
+      document.head.appendChild(link);
+      console.log('Dynamic PWA manifest link injected:', link.href);
+    }
+  }, [userProfile, publicProfile]);
+
+
   // Router listener
   useEffect(() => {
     const handleNavigation = () => {
@@ -329,8 +378,22 @@ export default function App() {
     }
   }, [urlParams]);
 
-  // Observe User State for apps tab
+  // Observe User State for apps tab with offline cache
   useEffect(() => {
+    // Optimistic offline loading of my profile
+    try {
+      const cachedMe = localStorage.getItem('esm_my_profile');
+      const cachedMeRefs = localStorage.getItem('esm_my_referrals_count');
+      if (cachedMe) {
+        setUserProfile(JSON.parse(cachedMe));
+      }
+      if (cachedMeRefs) {
+        setReferralsCount(Number(cachedMeRefs));
+      }
+    } catch (e) {
+      console.warn('Could not read cached my profile:', e);
+    }
+
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
@@ -340,12 +403,14 @@ export default function App() {
           if (profileDoc.exists()) {
             const data = profileDoc.data() as UserProfile;
             setUserProfile(data);
+            localStorage.setItem('esm_my_profile', JSON.stringify(data));
             
             // Calculate live Referral Count matching username
             const refQuery = query(collection(db, 'referrals'), where('fromUsername', '==', data.username.toLowerCase()));
             const querySnap = await getDocs(refQuery);
             const liveCount = querySnap.size;
             setReferralsCount(liveCount);
+            localStorage.setItem('esm_my_referrals_count', String(liveCount));
 
             // Level upgrade logic: >= 15 level=2, >= 35 level=3
             let finalLevel: 1 | 2 | 3 = data.level;
@@ -363,7 +428,9 @@ export default function App() {
                 level: finalLevel,
                 referralCount: liveCount
               });
-              setUserProfile({ ...data, level: finalLevel, referralCount: liveCount });
+              const updated = { ...data, level: finalLevel, referralCount: liveCount };
+              setUserProfile(updated);
+              localStorage.setItem('esm_my_profile', JSON.stringify(updated));
             }
           }
         } catch (err) {
@@ -379,7 +446,7 @@ export default function App() {
     return () => unsub();
   }, [currentPath]);
 
-  // Fetch Public Profile details if on specific path
+  // Fetch Public Profile details with offline cache fallback
   useEffect(() => {
     const cleanPath = currentPath.substring(1).trim();
     const isReserved = ['admin', 'apps', 'api', 'assets', 'icons', 'public', ''].includes(cleanPath.toLowerCase());
@@ -387,17 +454,32 @@ export default function App() {
     if (!isReserved) {
       const fetchPublicUserProfile = async () => {
         setLoadingPublicProfile(true);
+        const cacheKey = `esm_profile_${cleanPath.toLowerCase()}`;
+        
+        // Optimistic offline loading
+        try {
+          const stored = localStorage.getItem(cacheKey);
+          if (stored) {
+            setPublicProfile(JSON.parse(stored));
+          }
+        } catch (e) {
+          console.warn('Could not read stored public profile:', e);
+        }
+
         try {
           const uQuery = query(collection(db, 'users'), where('username', '==', cleanPath.toLowerCase()));
           const userSnap = await getDocs(uQuery);
           if (!userSnap.empty) {
             const docSnap = userSnap.docs[0];
-            setPublicProfile({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+            const profileData = { uid: docSnap.id, ...docSnap.data() } as UserProfile;
+            setPublicProfile(profileData);
+            localStorage.setItem(cacheKey, JSON.stringify(profileData));
           } else {
             setPublicProfile(null);
           }
         } catch (err) {
-          console.error(err);
+          console.error('Firestore public profile fetch offline/failed:', err);
+          // Keep cached data or let it remain if already set from stored
         } finally {
           setLoadingPublicProfile(false);
         }
@@ -1000,6 +1082,61 @@ export default function App() {
                     <p className="text-xs text-gold/80 font-mono tracking-wider font-semibold">@{userProfile.username}</p>
                     <p className="text-xs text-zinc-400 italic max-w-sm">"{userProfile.bio}"</p>
                   </div>
+                </div>
+
+                {/* Custom PWA Installation Button & Adaptive Guide */}
+                <div className="bg-gradient-to-r from-amber-600/10 via-gold/10 to-transparent border border-gold/30 rounded-2xl p-4 space-y-3 text-right relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-gold/10 blur-xl rounded-full" />
+                  <div className="flex items-start gap-3 flex-row-reverse relative z-10">
+                    <div className="p-2 bg-gold/20 border border-gold/30 rounded-xl text-gold mt-1">
+                      <ShoppingBag className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-white">تثبيت تطبيقك الخاص المذهب باسمك وصورتك 📱</h4>
+                      <p className="text-[10px] text-zinc-300 leading-relaxed">
+                        قم بتثبيت تطبيقك الشخصي النادر {userProfile.displayName} في شاشة هاتفك الرئيسية لتتابعه وتفتحه حتى <strong className="text-gold">دون الحاجة لإنترنت (أوفلاين) وبدون متصفح!</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+                    
+                    return (
+                      <div className="pt-1 flex flex-col items-center gap-2 relative z-10 w-full">
+                        {showInstallBtn && deferredPrompt ? (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={async () => {
+                              if (!deferredPrompt) return;
+                              deferredPrompt.prompt();
+                              const { outcome } = await deferredPrompt.userChoice;
+                              console.log('Installation outcome:', outcome);
+                              setDeferredPrompt(null);
+                              setShowInstallBtn(false);
+                            }}
+                            className="w-full py-2 bg-gradient-to-r from-amber-500 to-gold text-black text-[11px] font-black rounded-xl cursor-pointer hover:shadow hover:shadow-gold/20 transition-all flex items-center justify-center gap-2"
+                          >
+                            <span>اضغط هنا لتثبيت تطبيقك الشخصي فورا ⚡</span>
+                          </motion.button>
+                        ) : (
+                          <div className="w-full text-center bg-black/40 border border-zinc-900 rounded-xl p-3 space-y-2">
+                            <span className="text-[9px] text-zinc-450 font-bold block leading-relaxed">
+                              {isIOS 
+                                ? '💡 لتثبيت تطبيقك على آيفون: اضغط مشاركة [Share] ثم اختر "إضافة إلى الشاشة الرئيسية" [Add to Home Screen] 👑' 
+                                : '👑 مبروك! تطبيقك جاهز ومحمي دائمًا. اضغط على خيارات متصفحك ثم "تثبيت التطبيق" أو "إضافة للرئيسية".'
+                              }
+                            </span>
+                            <div className="flex gap-2 justify-center">
+                              <span className="text-[8px] bg-zinc-900 text-gold px-2 py-0.5 rounded border border-zinc-800 font-bold">دعم كامل للأوفلاين (بلا نت) ⚡</span>
+                              <span className="text-[8px] bg-zinc-900 text-zinc-300 px-2 py-0.5 rounded border border-zinc-800 font-bold">حسب رتبتك الحالية</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Level Up Statistics widgets */}
