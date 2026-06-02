@@ -39,6 +39,7 @@ export interface User {
   accessCode: string;
   level: 1 | 2 | 3;
   referralCount: number;
+  likes?: number;
   createdAt: any;
 }
 
