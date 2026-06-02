@@ -63,11 +63,11 @@ export default function App() {
   // App Config and Prices
   const [configApp, setConfigApp] = useState<ConfigApp>({
     classicPrice: 499,
-    classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• تطريز ذهبي بخيوط فاخرة\n• تغليف راقي كهدية فخمة\n• ضمان استرجاع مجاني لمدة 3 أيام",
+    classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• طباعة وحفر DTF مذهب عالي الدقة بالاسم",
     duoPrice: 899,
-    duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• تغليف ملكي خاص بكل قطعة على حدة\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
+    duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
     premiumPrice: 880,
-    premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+    premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
     whatsappNumber: '201223043867',
     focusedProduct: 'premium'
   });
@@ -253,11 +253,11 @@ export default function App() {
         if (!configSnap.exists()) {
           const defaultConfig: ConfigApp = {
             classicPrice: 499,
-            classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• تطريز ذهبي بخيوط فاخرة\n• تغليف راقي كهدية فخمة\n• ضمان استرجاع مجاني لمدة 3 أيام",
+            classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• طباعة وحفر DTF مذهب عالي الدقة بالاسم",
             duoPrice: 899,
-            duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• تغليف ملكي خاص بكل قطعة على حدة\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
+            duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
             premiumPrice: 880,
-            premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+            premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: '201223043867',
             focusedProduct: 'premium',
             types: defaultTypes
@@ -270,11 +270,11 @@ export default function App() {
           const data = configSnap.data();
           const merged: ConfigApp = {
             classicPrice: data.classicPrice || 499,
-            classicDescription: data.classicDescription || "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• تطريز ذهبي بخيوط فاخرة\n• تغليف راقي كهدية فخمة\n• ضمان استرجاع مجاني لمدة 3 أيام",
+            classicDescription: data.classicDescription || "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• طباعة وحفر DTF مذهب عالي الدقة بالاسم",
             duoPrice: data.duoPrice || 899,
-            duoDescription: data.duoDescription || "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• تغليف ملكي خاص بكل قطعة على حدة\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
+            duoDescription: data.duoDescription || "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
             premiumPrice: data.premiumPrice || 880,
-            premiumDescription: data.premiumDescription || "باقة التاج المذهب - النسخة الملكية الأقوى\n• تطريز مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• يتضمن كارت VIP وباقة ملصقات مذهبة بريميوم\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+            premiumDescription: data.premiumDescription || "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: data.whatsappNumber || '201223043867',
             focusedProduct: data.focusedProduct || 'premium',
             types: data.types || defaultTypes
@@ -1294,10 +1294,48 @@ export default function App() {
                 {/* Referrals loop instructions details */}
                 <div className="bg-zinc-900/40 border border-zinc-900 p-4 rounded-xl space-y-2">
                   <h4 className="text-xs font-bold text-white flex items-center gap-1.5 justify-end">
-                    <span>خطوات الارتقاء لمراتب الملوك والتاج الفخم</span>
+                    <span>خطوات الارتقاء وأيقونات تطبيقك الشخصي</span>
                     <Sparkles className="w-3.5 h-3.5 text-gold" />
                   </h4>
-                  <ul className="text-[10px] text-zinc-400 space-y-1 text-right list-disc list-inside">
+                  <p className="text-[10px] text-zinc-400 text-right mb-4">
+                    اجمع الزيارات لترقية رتبتك وتغيير أيقونة تطبيقك المثبت على هاتفك (تتحدث الأيقونة تلقائياً عند الترقي).
+                  </p>
+                  
+                  <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                    {/* Level 1: Bronze */}
+                    <div className={`p-2 rounded-xl flex flex-col items-center gap-2 border ${userProfile.level === 1 ? 'border-amber-700/50 bg-amber-900/20' : 'border-zinc-800 bg-black/40'} relative`}>
+                      {userProfile.level === 1 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-700 text-white text-[8px] px-2 py-0.5 rounded-full z-10 w-max">التطبيق الحالي</span>}
+                      {userProfile.level > 1 && <div className="absolute inset-0 bg-black/60 rounded-xl z-10 flex items-center justify-center backdrop-blur-[1px]"><Check className="w-6 h-6 text-emerald-500" /></div>}
+                      <img src="/icons/stage1.png" alt="Bronze App Icon" className="w-12 h-12 rounded-xl border border-zinc-700 shadow-md" />
+                      <div>
+                        <div className="text-[10px] font-bold text-zinc-300">برونزي</div>
+                        <div className="text-[8px] text-zinc-500">الأساسي</div>
+                      </div>
+                    </div>
+
+                    {/* Level 2: Silver */}
+                    <div className={`p-2 rounded-xl flex flex-col items-center gap-2 border ${userProfile.level === 2 ? 'border-zinc-400/50 bg-zinc-400/20' : 'border-zinc-800 bg-black/40'} relative`}>
+                      {userProfile.level === 2 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-zinc-400 text-black text-[8px] px-2 py-0.5 rounded-full z-10 font-bold w-max">التطبيق الحالي</span>}
+                      {userProfile.level > 2 && <div className="absolute inset-0 bg-black/60 rounded-xl z-10 flex items-center justify-center backdrop-blur-[1px]"><Check className="w-6 h-6 text-emerald-500" /></div>}
+                      <img src="/icons/stage2.png" alt="Silver App Icon" className="w-12 h-12 rounded-xl border border-zinc-600 shadow-md opacity-90" />
+                      <div>
+                        <div className="text-[10px] font-bold text-zinc-300">فضي</div>
+                        <div className="text-[8px] text-zinc-500">15 زيارة</div>
+                      </div>
+                    </div>
+
+                    {/* Level 3: Gold (Royal) */}
+                    <div className={`p-2 rounded-xl flex flex-col items-center gap-2 border ${userProfile.level === 3 ? 'border-gold/50 bg-gold/20' : 'border-zinc-800 bg-black/40'} relative`}>
+                      {userProfile.level === 3 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gold text-black text-[8px] px-2 py-0.5 rounded-full z-10 font-bold w-max">أيقونتك الحالية 👑</span>}
+                      <img src="/icons/stage3.png" alt="Gold App Icon" className="w-12 h-12 rounded-xl border border-gold/40 shadow-md shadow-gold/20 opacity-90" />
+                      <div>
+                        <div className="text-[10px] font-bold text-gold">التاج الذهبي</div>
+                        <div className="text-[8px] text-zinc-500">35 زيارة</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <ul className="text-[10px] text-zinc-400 space-y-1 text-right list-disc list-inside mt-4 pt-4 border-t border-zinc-800/60">
                     <li>شارك رابطك المخصص والفريد بالأسفل مع أصدقائك ومعارفك.</li>
                     <li>المستوى الأول (برونزي) - تفعيل تلقائي عند تفعيل كود التيشيرت.</li>
                     <li>المستوى الثاني (فضي) - عند إكمال 15 إحالة صديق مهتم بنجاح.</li>
@@ -1678,13 +1716,13 @@ export default function App() {
                     {leadSuccess ? (
                       <div className="p-4 bg-gold/10 border border-gold/30 text-gold text-xs rounded-xl font-bold font-sans space-y-1">
                         <div>تم حجز وتنسيق طلبك الفاخر كطلب خاص!</div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-1">جاري توجيهك لواتساب براند الأسياد لبدء التطريز...</div>
+                        <div className="text-[10px] text-zinc-400 font-mono mt-1">جاري توجيهك لواتساب براند الأسياد لبدء الطباعة والتحضير الفوري...</div>
                       </div>
                     ) : (
                       <form onSubmit={handleQuickOrderSubmit} className="space-y-3 text-right">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-zinc-500 text-[10px] font-bold mb-1 mr-1">الاسم المرغوب تطريزه على الصدر</label>
+                            <label className="block text-zinc-500 text-[10px] font-bold mb-1 mr-1">الاسم المرغوب طباعته وحفره بدقة على الصدر</label>
                             <input
                               type="text"
                               required
@@ -1792,7 +1830,7 @@ export default function App() {
                     <span>مواصفات واستمارة تفصيل الاسم الملكي المخصوص</span>
                   </h4>
                   <p className="text-[10px] text-zinc-400 leading-relaxed">
-                    قم بتعبئة الاستمارة التالية، وسيتم إدراج طلبك فوراً في لوحة تحكم المصنع وتوجيهك لتنسيق الشحن وهدية التغليف.
+                    قم بتعبئة الاستمارة التالية، وسيتم إدراج طلبك فوراً في لوحة تحكم المصنع وتوجيهك لتنسيق الشحن والبدء الفوري.
                   </p>
                 </div>
 
@@ -1943,7 +1981,7 @@ export default function App() {
                     />
                     <div className="absolute top-2 right-2 bg-black/80 px-2 py-0.5 rounded text-[8px] font-bold text-gold border border-gold/20 flex items-center gap-0.5">
                       <Crown className="w-2.5 h-2.5 text-gold" />
-                      <span>تطريز مذهب</span>
+                      <span>حفر DTF مذهب</span>
                     </div>
                   </div>
                   
