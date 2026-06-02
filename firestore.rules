@@ -1,0 +1,174 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        (request.auth.token.email == 'cslcrsh@gmail.com' || request.auth.token.email == 'alemhomd123@gmail.com');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity validations
+    function isValidConfigApp(data) {
+      return data.classicPrice is number
+        && data.duoPrice is number
+        && data.premiumPrice is number
+        && data.whatsappNumber is string && data.whatsappNumber.size() <= 50;
+    }
+
+    function isValidDesign(data) {
+      return data.id is string
+        && data.name is string && data.name.size() <= 200
+        && data.imageUrl is string && data.imageUrl.size() <= 2048
+        && data.searchTags is list && data.searchTags.size() <= 30
+        && data.whatsappMessage is string && data.whatsappMessage.size() <= 2048;
+    }
+
+    function isValidAccessCode(data) {
+      return data.code is string && data.code.size() <= 50
+        && data.name is string && data.name.size() <= 200
+        && data.phone is string && data.phone.size() <= 50
+        && data.product in ['classic', 'duo', 'premium']
+        && data.used is bool
+        && (data.activatedBy == null || (data.activatedBy is string && data.activatedBy.size() <= 128));
+    }
+
+    function isValidUser(data) {
+      return data.username is string && data.username.size() <= 50
+        && data.displayName is string && data.displayName.size() <= 200
+        && data.photoUrl is string && data.photoUrl.size() <= 2048
+        && data.bio is string && data.bio.size() <= 1000
+        && data.phone is string && data.phone.size() <= 50
+        && data.accessCode is string && data.accessCode.size() <= 50
+        && data.level in [1, 2, 3]
+        && data.referralCount is number;
+    }
+
+    function isValidOrder(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.phone is string && data.phone.size() <= 50
+        && data.fabric in ['Classic', 'Premium']
+        && data.notes is string && data.notes.size() <= 1000
+        && (data.designId == null || data.designId is string)
+        && data.status in ['pending', 'contacted', 'completed'];
+    }
+
+    function isValidReferral(data) {
+      return data.fromUsername is string && data.fromUsername.size() <= 50
+        && data.visitorId is string && data.visitorId.size() <= 128;
+    }
+
+    // Collection Rules
+
+    // 1. Config rules
+    match /config/app {
+      allow read: if true;
+      allow write: if isAdmin() && isValidConfigApp(incoming());
+    }
+
+    // 2. Designs rules
+    match /designs/{designId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidDesign(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidDesign(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin();
+    }
+
+    // 3. Access Codes rules
+    match /accessCodes/{code} {
+      // Anyone can get individual accessCode to check isUsed or validate it in gate
+      allow get: if true;
+      
+      // Admin can search/list codes
+      allow list: if isAdmin();
+
+      // Admin can create codes
+      allow create: if isAdmin() && isValidAccessCode(incoming()) && incoming().createdAt == request.time;
+
+      // Allow updating ONLY to mark used=true and set activatedBy to anonymous UID
+      allow update: if (
+        isAdmin()
+      ) || (
+        existing().used == false 
+        && incoming().used == true 
+        && incoming().activatedBy == request.auth.uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'activatedBy'])
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 4. Users profiles
+    match /users/{userId} {
+      // Publicly viewable so users can see /{username}
+      allow read: if true;
+
+      // User can create their own doc if they have an activated access code matching their ID
+      allow create: if isOwner(userId) 
+        && isValidUser(incoming()) 
+        && get(/databases/$(database)/documents/accessCodes/$(incoming().accessCode)).data.activatedBy == request.auth.uid
+        && incoming().createdAt == request.time;
+
+      // User or admin can update with proper checks
+      allow update: if isAdmin() || (
+        isOwner(userId)
+        && isValidUser(incoming())
+        && incoming().username == existing().username
+        && incoming().accessCode == existing().accessCode
+        && (
+          // Self update cannot increase level or referrals directly
+          incoming().level == existing().level
+          && incoming().referralCount == existing().referralCount
+          && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'bio', 'phone'])
+        )
+      ) || (
+        // Client side automatic upgrade rule: allows level, referralCount, level to be incremented
+        isOwner(userId)
+        && isValidUser(incoming())
+        && incoming().username == existing().username
+        && incoming().accessCode == existing().accessCode
+        && incoming().diff(existing()).affectedKeys().hasOnly(['level', 'referralCount'])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // 5. Orders rules
+    match /orders/{orderId} {
+      allow create: if isValidOrder(incoming()) && incoming().createdAt == request.time;
+      allow read: if isAdmin();
+      allow update: if isAdmin() && isValidOrder(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 6. Referrals rules
+    match /referrals/{referralId} {
+      allow create: if isValidReferral(incoming()) && incoming().timestamp == request.time;
+      allow read: if true; // Allows counting client-side
+      allow write: if isAdmin();
+    }
+  }
+}

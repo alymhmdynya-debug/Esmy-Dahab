@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Cinzel:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cinzel", Georgia, serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-gold: #D4AF37;
+  --color-silver: #C0C0C0;
+  --color-amber-400: #D4AF37;
+  --color-amber-500: #C5A028;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  background-color: #000000; /* Pure pitch black #000 */
+  color: #ffffff;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+/* Luxury glowing typography helper classes */
+.gold-glow {
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.3), 0 0 2px rgba(212, 175, 55, 0.5);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #FFF099 0%, #D4AF37 50%, #8A6F14 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.silver-gradient {
+  background: linear-gradient(135deg, #FFFFFF 0%, #C0C0C0 50%, #707070 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-border {
+  border-image: linear-gradient(to right, #8A6F14, #D4AF37, #FFF099, #8A6F14) 1;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #111111;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D4AF37;
+}

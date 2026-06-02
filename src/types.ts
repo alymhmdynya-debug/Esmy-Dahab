@@ -1,0 +1,56 @@
+export interface ConfigApp {
+  classicPrice: number;
+  duoPrice: number;
+  premiumPrice: number;
+  whatsappNumber: string;
+}
+
+export interface Design {
+  id: string;
+  name: string;
+  imageUrl: string;
+  searchTags: string[];
+  whatsappMessage: string;
+  createdAt: any; // Firestore Timestamp or serverTimestamp
+}
+
+export interface AccessCode {
+  code: string;
+  name: string;
+  phone: string;
+  product: 'classic' | 'duo' | 'premium';
+  used: boolean;
+  createdAt: any;
+  activatedBy?: string; // UID of user
+}
+
+export interface User {
+  uid?: string; // we can map this on load
+  username: string;
+  displayName: string;
+  photoUrl: string;
+  bio: string;
+  phone: string;
+  accessCode: string;
+  level: 1 | 2 | 3;
+  referralCount: number;
+  createdAt: any;
+}
+
+export interface Order {
+  id: string;
+  name: string;
+  phone: string;
+  fabric: 'Classic' | 'Premium';
+  notes: string;
+  designId?: string | null;
+  status: 'pending' | 'contacted' | 'completed';
+  createdAt: any;
+}
+
+export interface Referral {
+  id?: string;
+  fromUsername: string;
+  visitorId: string;
+  timestamp: any;
+}

@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Anyone can view the images uploaded (product designs, public wearables, and custom user pictures)
+      allow read: if true;
+      
+      // Registered users can upload photo to their paths or stories, admins have full power
+      allow write: if request.auth != null;
+    }
+  }
+}

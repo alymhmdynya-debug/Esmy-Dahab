@@ -1,0 +1,242 @@
+{
+  "entities": {
+    "configApp": {
+      "title": "Platform App Configuration",
+      "description": "Global custom configurations and prices",
+      "type": "object",
+      "properties": {
+        "classicPrice": {
+          "type": "number"
+        },
+        "duoPrice": {
+          "type": "number"
+        },
+        "premiumPrice": {
+          "type": "number"
+        },
+        "whatsappNumber": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "classicPrice",
+        "duoPrice",
+        "premiumPrice",
+        "whatsappNumber"
+      ]
+    },
+    "design": {
+      "title": "T-shirt Custom Design",
+      "description": "Prestige custom designs made by the brand",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "searchTags": {
+          "type": "array"
+        },
+        "whatsappMessage": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "imageUrl",
+        "searchTags",
+        "whatsappMessage",
+        "createdAt"
+      ]
+    },
+    "accessCode": {
+      "title": "Exclusive App Access Code",
+      "description": "A ticket allowing access to the VIP apps dashboard",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string",
+          "enum": [
+            "classic",
+            "duo",
+            "premium"
+          ]
+        },
+        "used": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "activatedBy": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "phone",
+        "product",
+        "used",
+        "createdAt"
+      ]
+    },
+    "user": {
+      "title": "User Account Profile",
+      "description": "VIP User profile containing their referral stats",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "photoUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "bio": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "accessCode": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "referralCount": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "username",
+        "displayName",
+        "photoUrl",
+        "bio",
+        "phone",
+        "accessCode",
+        "level",
+        "referralCount",
+        "createdAt"
+      ]
+    },
+    "order": {
+      "title": "Prestige Apparel Order",
+      "description": "Customer custom-made order logs",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "fabric": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "designId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "phone",
+        "fabric",
+        "notes",
+        "status",
+        "createdAt"
+      ]
+    },
+    "referral": {
+      "title": "Dynamic Referral Visitor Log",
+      "description": "Tracks referrers' unique visits to handle gamified level ups",
+      "type": "object",
+      "properties": {
+        "fromUsername": {
+          "type": "string"
+        },
+        "visitorId": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fromUsername",
+        "visitorId",
+        "timestamp"
+      ]
+    }
+  },
+  "firestore": {
+    "config/app": {
+      "schema": "configApp",
+      "description": "Store live shop configuration"
+    },
+    "designs/{designId}": {
+      "schema": "design",
+      "description": "Catalogue items representable to customers and filterable"
+    },
+    "accessCodes/{code}": {
+      "schema": "accessCode",
+      "description": "Access tokens generated by admins"
+    },
+    "users/{userId}": {
+      "schema": "user",
+      "description": "Elite customers profiles"
+    },
+    "orders/{orderId}": {
+      "schema": "order",
+      "description": "T-shirt client customization orders"
+    },
+    "referrals/{referralId}": {
+      "schema": "referral",
+      "description": "Track custom referral events"
+    }
+  }
+}

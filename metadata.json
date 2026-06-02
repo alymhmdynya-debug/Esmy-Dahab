@@ -1,0 +1,6 @@
+{
+  "name": "Esmy Dahab - إسمي ذهب",
+  "description": "كل قطعة قصة باسمك - براند تيشرتات بالاسم، أوفرسايز وان سايز فخم.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
