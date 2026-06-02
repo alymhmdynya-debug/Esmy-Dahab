@@ -197,30 +197,37 @@ export default function App() {
     };
   }, []);
 
-  // Dynamically configure and inject manifest based on current profile
+  // Dynamically configure and inject manifest based on current profile or logged in user
   useEffect(() => {
     let usernameForManifest = '';
-    if (userProfile && userProfile.username) {
-      usernameForManifest = userProfile.username.toLowerCase();
-    } else if (publicProfile && publicProfile.username) {
-      usernameForManifest = publicProfile.username.toLowerCase();
+    const isProfileViewActive = currentPath.substring(1).trim().length > 0 && !['admin', 'apps', 'api', 'assets', 'icons', 'public'].includes(currentPath.substring(1).trim().toLowerCase());
+    
+    // Determine which username to use for the PWA manifest
+    if (isProfileViewActive) {
+      usernameForManifest = currentPath.substring(1).toLowerCase().trim();
+    } else if (userProfile && userProfile.username) {
+      usernameForManifest = userProfile.username.toLowerCase().trim();
     }
 
     // Always clean up existing dynamic manifest link first
-    const existingManifestLink = document.getElementById('dynamic-manifest');
+    const existingManifestLink = document.getElementById('dynamic-manifest') || document.querySelector("link[rel='manifest']");
     if (existingManifestLink) {
       existingManifestLink.remove();
     }
 
+    const link = document.createElement('link');
+    link.id = 'dynamic-manifest';
+    link.rel = 'manifest';
     if (usernameForManifest) {
-      const link = document.createElement('link');
-      link.id = 'dynamic-manifest';
-      link.rel = 'manifest';
+      // Set long-lived cookie for server manifest resolution
+      document.cookie = `esm_username=${usernameForManifest};path=/;max-age=31536000;SameSite=Lax`;
       link.href = `/${usernameForManifest}/manifest.json`;
-      document.head.appendChild(link);
-      console.log('Dynamic PWA manifest link injected:', link.href);
+    } else {
+      link.href = '/manifest.json';
     }
-  }, [userProfile, publicProfile]);
+    document.head.appendChild(link);
+    console.log('PWA Manifest link updated:', link.href);
+  }, [userProfile, publicProfile, currentPath]);
 
 
   // Router listener
@@ -883,25 +890,6 @@ export default function App() {
   const isProfileView = currentPath.substring(1).trim().length > 0 && !['admin', 'apps', 'api', 'assets', 'icons', 'public'].includes(currentPath.substring(1).trim().toLowerCase());
   const isAdminView = currentPath === '/admin' || currentPath === '/admin/';
   const isAppsView = currentPath === '/apps' || currentPath === '/apps/';
-
-  // Update dyn manifest in viewport head dynamically
-  useEffect(() => {
-    if (isProfileView) {
-      const usernameParam = currentPath.substring(1);
-      let linkElement = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
-      if (!linkElement) {
-        linkElement = document.createElement('link');
-        linkElement.rel = 'manifest';
-        document.head.appendChild(linkElement);
-      }
-      linkElement.href = `/${usernameParam}/manifest.json`;
-    } else {
-      let linkElement = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
-      if (linkElement) {
-        linkElement.removeAttribute('href');
-      }
-    }
-  }, [isProfileView, currentPath]);
 
   // RENDERING LOGICS
 
