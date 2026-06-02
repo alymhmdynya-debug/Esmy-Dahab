@@ -169,11 +169,6 @@ export default function App() {
   const [totalJoinedCount, setTotalJoinedCount] = useState<number>(0);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState<boolean>(false);
 
-  // Interactive random discount game
-  const [randomDiscountVal, setRandomDiscountVal] = useState<number | null>(null);
-  const [isSpinningDiscount, setIsSpinningDiscount] = useState<boolean>(false);
-  const [copiedDiscountCode, setCopiedDiscountCode] = useState<boolean>(false);
-
   // Public profile visitor view
   const [publicProfile, setPublicProfile] = useState<UserProfile | null>(null);
   const [loadingPublicProfile, setLoadingPublicProfile] = useState<boolean>(false);
@@ -591,26 +586,6 @@ export default function App() {
     } catch (err) {
       console.error('Error toggling premium user profile like:', err);
     }
-  };
-
-  // Handle Interactive discount spin
-  const handleDrawDiscount = () => {
-    if (isSpinningDiscount) return;
-    setIsSpinningDiscount(true);
-    setRandomDiscountVal(null);
-    let elapsed = 0;
-    const interval = setInterval(() => {
-      // Simulate dynamic spinning numbers
-      setRandomDiscountVal(Math.floor(Math.random() * 21) + 25); // 25 to 45
-      elapsed += 100;
-      if (elapsed >= 1500) {
-        clearInterval(interval);
-        // Guarantee winning range up to 45% (30% to 45% inclusive)
-        const luckChoice = Math.floor(Math.random() * 16) + 30; // 30 to 45
-        setRandomDiscountVal(luckChoice);
-        setIsSpinningDiscount(false);
-      }
-    }, 100);
   };
 
   // Search Action
@@ -2155,16 +2130,16 @@ export default function App() {
           </div>
         </section>
 
-        {/* VIDEOS AND RANDOM FRIENDS DISCOUNT DRAWING SPECIAL CAMPAIGN */}
+        {/* VIDEOS AND RANDOM FRIENDS DRAWING SPECIAL CAMPAIGN */}
         <section className="max-w-4xl mx-auto space-y-8">
           <div className="text-center space-y-2">
-            <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">ملحمة الأصدقاء وهدايا القمة 🎬</h3>
-            <p className="text-xs text-zinc-400">شاركنا لحظات بريقك بالقطع المذهبة أو اكسب خصم الأقوياء الفوري!</p>
+            <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">ملحمة الأصدقاء والأسياد 🎬</h3>
+            <p className="text-xs text-zinc-400">شاركنا لحظات بريقك بالقطع المذهبة لتنالوا شهرة تليق بقيمتكم الرفيعة!</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="flex justify-center max-w-xl mx-auto">
             {/* Friends Video promo Card */}
-            <div className="bg-zinc-950/40 border border-zinc-900 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative overflow-hidden backdrop-blur">
+            <div className="w-full bg-zinc-950/40 border border-zinc-900 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative overflow-hidden backdrop-blur">
               <div className="absolute top-0 right-0 w-24 h-24 bg-gold/5 blur-2xl rounded-full" />
               
               <div className="space-y-4 text-right">
@@ -2189,80 +2164,6 @@ export default function App() {
                 <Send className="w-3.5 h-3.5" />
                 <span>أرسل لقطتك الملكية عبر الواتساب</span>
               </button>
-            </div>
-
-            {/* Random Discount Wheel game Card */}
-            <div className="bg-zinc-950/40 border border-zinc-900 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative overflow-hidden backdrop-blur">
-              <div className="absolute top-0 left-0 w-24 h-24 bg-red-500/5 blur-2xl rounded-full pointer-events-none" />
-              
-              <div className="space-y-4 text-right">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-gold/30 flex items-center justify-center">
-                  <Gift className="w-6 h-6 text-gold" />
-                </div>
-                <div>
-                  <h4 className="font-black text-md text-white">اكسب خصم الأصدقاء العشوائي! (يصل لـ 45%) 🎰</h4>
-                  <p className="text-[10.5px] text-zinc-400 leading-relaxed mt-2.5">
-                    عند رغبتك في حجز أكثر من تيشيرتين للطلب الواحد (لك ولصديق العمر مثلاً)، أدر دولاب هدايا الملوك العشوائي فوراً لتحصد نسبة خصم حصرية قد تصل إلى <strong className="text-gold font-bold">45% من مجمل الفاتورة مع العلب الملكية كاملة مجاناً!</strong>
-                  </p>
-                </div>
-              </div>
-
-              {/* Slot animation result */}
-              <div className="bg-black/60 border border-zinc-900 rounded-2xl p-4 text-center min-h-[140px] flex flex-col justify-center items-center space-y-3">
-                {isSpinningDiscount ? (
-                  <div className="space-y-2">
-                    <p className="text-[10px] text-zinc-550 text-zinc-400 animate-pulse">جاري سحب التذكرة الملكية...</p>
-                    <div className="text-3xl font-black font-mono text-gold tracking-widest animate-bounce">
-                      %{randomDiscountVal || '??'}
-                    </div>
-                  </div>
-                ) : randomDiscountVal !== null ? (
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-[9px] text-zinc-550 text-zinc-500 uppercase font-black">تهانينا الحارة للأسياد! صك الخصم مفعّل</span>
-                      <div className="text-3xl font-black font-mono text-gold-glow text-amber-400 animate-pulse mt-0.5">
-                        فزت بخصم %{randomDiscountVal} كاملة! 🎉
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 justify-center items-center">
-                      <button
-                        onClick={() => {
-                          const code = `ESM-FRIENDS${randomDiscountVal}`;
-                          navigator.clipboard.writeText(code);
-                          setCopiedDiscountCode(true);
-                          setTimeout(() => setCopiedDiscountCode(false), 2000);
-                        }}
-                        className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg text-[9px] font-bold border border-zinc-800 flex items-center gap-1 cursor-pointer"
-                      >
-                        {copiedDiscountCode ? <Check className="w-3 h-3 text-gold" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedDiscountCode ? 'تم النسخ!' : 'نسخ رمز الخصم'}</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          const finalMsg = `أهلاً، لقد قمت بتفعيل دولاب حظ الأصدقاء وفزت بخصم ملكي عشوائي بقيمة ${randomDiscountVal}% لطلبِ تيشيرتين باسمي! الكود الخاص بي هو: ESM-FRIENDS${randomDiscountVal}`;
-                          window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(finalMsg)}`, '_blank');
-                        }}
-                        className="px-3 py-1.5 bg-gold text-black hover:opacity-95 rounded-lg text-[9px] font-black flex items-center gap-1 cursor-pointer"
-                      >
-                        <ShoppingBag className="w-3 h-3" />
-                        <span>تأكيد الحجز بالواتساب والخصم %{randomDiscountVal}</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-zinc-500 text-[10px] italic">احصل على كبون الحظ الملكي الخاص بك بضغطة واحدة</p>
-                    <button
-                      onClick={handleDrawDiscount}
-                      className="px-5 py-2 bg-gradient-to-r from-amber-600 to-gold text-black text-[10px] font-black rounded-xl cursor-pointer hover:opacity-90 shadow shadow-gold/10 transition-all"
-                    >
-                      اسحب خصم الأصدقاء العشوائي فورا 🎰
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </section>
@@ -2355,23 +2256,11 @@ export default function App() {
         </section>
 
         {/* BRAND VALUES FEATURES */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center py-6">
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-center py-6 max-w-2xl mx-auto">
           <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
             <Crown className="w-8 h-8 text-gold mx-auto" />
-            <h5 className="font-bold text-xs">تطريز ملكي فاخر</h5>
-            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-400 leading-relaxed">تطريز عالي الدقة بخيوط براقة مقاومة للحسحسة والغسيل المتكرر.</p>
-          </div>
-
-          <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
-            <Gift className="w-8 h-8 text-gold mx-auto" />
-            <h5 className="font-bold text-xs">تغليف فخم وهدايا</h5>
-            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-405 text-zinc-400 leading-relaxed">كل قطعة تصلك في علبة نفاذة ببطاقات شكر معطّرة وملصقات البراند.</p>
-          </div>
-
-          <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
-            <Shield className="w-8 h-8 text-gold mx-auto" />
-            <h5 className="font-bold text-xs">ضمان ذهبي 3 أيام</h5>
-            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-405 text-zinc-400 leading-relaxed">إمكانية استرجاع أو استبدال مجاني في حال وجود أي عيب مصنعي.</p>
+            <h5 className="font-bold text-xs">طباعة وحفر DTF ملكي</h5>
+            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-400 leading-relaxed">طباعة أو حفر DTF عالي الدقة مش بخيوط مقاوم للغسيل المتكرر والحرارة.</p>
           </div>
 
           <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
