@@ -39,10 +39,9 @@ export function updatePwaAssets(level: 1 | 2 | 3, username?: string) {
     favicon.rel = 'icon';
     favicon.type = 'image/png';
     document.head.appendChild(favicon);
-  } else {
-    // Force browser to refresh favicon cache by appending a cachebuster parameter
-    favicon.href = `${iconPath}?v=${level}`;
   }
+  // Force browser to refresh favicon cache by appending a cachebuster parameter
+  favicon.href = `${iconPath}?v=${level}`;
 
   // 4. Update apple-touch-icon link in the DOM for iOS home screens
   let appleTouchIcon = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;

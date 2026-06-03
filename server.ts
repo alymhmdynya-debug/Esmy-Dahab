@@ -64,7 +64,7 @@ app.get('/:username/manifest.json', async (req, res) => {
     ],
     "start_url": `/${username}?ref=${username}`,
     "background_color": "#000000",
-    "theme_color": level === 1 ? "#000000" : level === 2 ? "#D4AF37" : "#C0C0C0",
+    "theme_color": level === 1 ? "#000000" : level === 2 ? "#C0C0C0" : "#D4AF37",
     "display": "standalone",
     "orientation": "portrait"
   });
@@ -131,7 +131,7 @@ app.get('/manifest.json', async (req, res) => {
         ],
         "start_url": `/${username}?ref=${username}`,
         "background_color": "#000000",
-        "theme_color": level === 1 ? "#000000" : level === 2 ? "#D4AF37" : "#C0C0C0",
+        "theme_color": level === 1 ? "#000000" : level === 2 ? "#C0C0C0" : "#D4AF37",
         "display": "standalone",
         "orientation": "portrait"
       });

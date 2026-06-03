@@ -2,6 +2,10 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { detectAndUpdatePwa } from './lib/pwa';
+
+// Instantly detect and synchronize PWA icon/metadata from offline cache
+detectAndUpdatePwa();
 
 // Register PWA service worker for offline support
 if ('serviceWorker' in navigator) {

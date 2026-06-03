@@ -168,6 +168,7 @@ export default function App() {
   // Leaderboard & Community Stats
   const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
   const [totalJoinedCount, setTotalJoinedCount] = useState<number>(0);
+  const [userRank, setUserRank] = useState<number | null>(null);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState<boolean>(false);
 
   // Public profile visitor view
@@ -559,6 +560,19 @@ export default function App() {
         });
 
         setLeaderboard(sorted.slice(0, 3));
+
+        // Find current logged-in user's index in sorted hierarchy
+        const currentUserId = auth.currentUser?.uid;
+        if (currentUserId) {
+          const myIndex = sorted.findIndex(u => u.uid === currentUserId || (userProfile && u.username === userProfile.username));
+          if (myIndex !== -1) {
+            setUserRank(myIndex + 1);
+          } else {
+            setUserRank(null);
+          }
+        } else {
+          setUserRank(null);
+        }
       } catch (err) {
         console.warn('Error loading leaderboard statistics:', err);
       } finally {
@@ -567,7 +581,7 @@ export default function App() {
     }
     
     fetchLeaderboardStats();
-  }, [currentPath]);
+  }, [currentPath, userProfile, currentUser]);
 
   // Navigate Helper
   const navigateTo = (path: string) => {
@@ -1225,21 +1239,29 @@ export default function App() {
                 </div>
 
                 {/* Level Up Statistics widgets */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-black/60 border border-zinc-900 rounded-2xl p-4 text-center space-y-1">
-                    <Users className="w-6 h-6 text-gold mx-auto" />
-                    <div className="text-lg font-black font-mono text-white">{referralsCount}</div>
-                    <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">عدد الإحالات النشطة</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-zinc-950 border border-zinc-900 rounded-xl p-3 text-center space-y-1 flex flex-col justify-center shadow-lg">
+                    <Users className="w-4 h-4 text-gold mx-auto" />
+                    <div className="text-xs font-black font-mono text-white">{referralsCount}</div>
+                    <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">عدد الإحالات</div>
                   </div>
 
-                  <div className="bg-black/60 border border-zinc-900 rounded-2xl p-4 text-center space-y-1 justify-center flex flex-col">
-                    <Award className="w-6 h-6 text-gold mx-auto" />
-                    <div className="text-xs font-black text-gold mt-1">
-                      {userProfile.level === 3 ? 'أعلى مستوى مذهب الملكي' :
-                       userProfile.level === 2 ? `متبقي ${35 - referralsCount} للملكي` :
-                       `متبقي ${15 - referralsCount} للرتبة الفضية`}
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center space-y-1 flex flex-col justify-center shadow-lg">
+                    <Heart className="w-4 h-4 text-red-500 fill-red-500/20 mx-auto animate-pulse" />
+                    <div className="text-xs font-black font-mono text-white">
+                      {userRank ? `#${userRank}` : '#1'}
                     </div>
-                    <div className="text-[9px] font-bold text-zinc-500">رتبتي الحالية بالمنصة</div>
+                    <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">ترتيب القلوب</div>
+                  </div>
+
+                  <div className="bg-zinc-950 border border-zinc-900 rounded-xl p-3 text-center space-y-1 flex flex-col justify-center shadow-lg">
+                    <Award className="w-4 h-4 text-gold mx-auto" />
+                    <div className="text-[9px] font-black text-gold">
+                      {userProfile.level === 3 ? 'تاج مذهب' :
+                       userProfile.level === 2 ? `رتبة فضية` :
+                       `رتبة برونزية`}
+                    </div>
+                    <div className="text-[9px] font-bold text-zinc-400">الرتبة الخاصة</div>
                   </div>
                 </div>
 
@@ -1825,7 +1847,7 @@ export default function App() {
               className="px-4 py-2 bg-gradient-to-r from-gold/15 to-gold/5 border border-gold/30 hover:border-gold rounded-full text-[11px] font-extrabold tracking-wide text-gold cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-gold/15"
             >
               <Sparkles className="w-3.5 h-3.5 text-gold gold-glow animate-pulse" />
-              <span>{showCustomOrderForm ? 'إغلاق فورم الطلب الخاص ❌' : 'تصميم وتدوين اسمك مخصوص بالخط العربي الفخم 👑'}</span>
+              <span>{showCustomOrderForm ? 'إغلاق فورم الطلب الخاص ❌' : 'لو عايز تصميم باسمك اضغط هنا 👑'}</span>
             </button>
           </div>
 
@@ -2160,7 +2182,7 @@ export default function App() {
                 <div className="pt-6 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
                   <div className="space-y-1 text-right">
                     <p className="text-xs text-zinc-300">
-                      🔥 انضم إلينا حتى الآن <span className="text-gold font-extrabold font-mono text-sm">{totalJoinedCount}</span> ملوك وأميرة متميزين في عائلة <span className="font-serif font-black gold-gradient bg-clip-text">إسمي ذهب</span> الفاخرة!
+                      🔥 انضم إلينا حتى الآن <span className="text-gold font-extrabold font-mono text-sm">{totalJoinedCount}</span> من الملوك المتميزين في عائلة <span className="font-serif font-black gold-gradient bg-clip-text">إسمي ذهب</span> الفاخرة!
                     </p>
                     <p className="text-[10px] text-zinc-500">
                       شارك مع أصدقائك، واجعلهم يصوتون لملفك المذهب لترتقي درجات الصدارة وتعتلي منصة الملوك الرسمية!
