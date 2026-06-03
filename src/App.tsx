@@ -220,6 +220,36 @@ export default function App() {
   }, [userProfile, publicProfile, currentPath]);
 
 
+  // Standalone PWA detection and profile lockout for extreme luxury branding
+  const [isStandalone, setIsStandalone] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+      setIsStandalone(!!isStandaloneMode);
+
+      if (isStandaloneMode) {
+        try {
+          const cachedMe = localStorage.getItem('esm_my_profile');
+          if (cachedMe) {
+            const profile = JSON.parse(cachedMe);
+            if (profile && profile.username) {
+              const profilePath = `/${profile.username.toLowerCase().trim()}`;
+              if (window.location.pathname !== profilePath) {
+                window.history.replaceState({ ...window.history.state }, '', profilePath);
+                setCurrentPath(profilePath);
+                console.log('[PWA Standalone] Cleanly isolated view lock to user profile:', profilePath);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[PWA Standalone] Skipping automatic redirect setup:', e);
+        }
+      }
+    }
+  }, [userProfile]);
+
+
   // Router listener
   useEffect(() => {
     const handleNavigation = () => {
@@ -860,6 +890,7 @@ export default function App() {
       };
 
       await setDoc(doc(db, 'users', auth.currentUser!.uid), newUserProfile);
+      localStorage.setItem('esm_my_profile', JSON.stringify(newUserProfile));
       setUserProfile(newUserProfile);
     } catch (err: any) {
       console.error(err);
@@ -1392,22 +1423,24 @@ export default function App() {
       <div className="min-h-screen bg-black text-white relative flex flex-col justify-between overflow-hidden">
         <ParticleBackground />
 
-        {/* Dynamic header */}
-        <header className="border-b border-gold/10 bg-black/80 sticky top-0 z-40 backdrop-blur w-full">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <button onClick={() => navigateTo('/')} className="flex items-center gap-2 cursor-pointer">
-              <Crown className="w-6 h-6 text-gold gold-glow" />
-              <span className="font-serif font-black tracking-wider text-sm gold-gradient">ESM • إسمي ذهب</span>
-            </button>
-            <button 
-              onClick={() => navigateTo('/')}
-              className="text-xs font-bold text-zinc-400 hover:text-gold flex items-center gap-1 transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>اطلب قطعة لنفسك</span>
-            </button>
-          </div>
-        </header>
+        {/* Dynamic header - Hidden in Standalone PWA mode for premium feeling */}
+        {!isStandalone && (
+          <header className="border-b border-gold/10 bg-black/80 sticky top-0 z-40 backdrop-blur w-full">
+            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+              <button onClick={() => navigateTo('/')} className="flex items-center gap-2 cursor-pointer">
+                <Crown className="w-6 h-6 text-gold gold-glow" />
+                <span className="font-serif font-black tracking-wider text-sm gold-gradient">ESM • إسمي ذهب</span>
+              </button>
+              <button 
+                onClick={() => navigateTo('/')}
+                className="text-xs font-bold text-zinc-400 hover:text-gold flex items-center gap-1 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>اطلب قطعة لنفسك</span>
+              </button>
+            </div>
+          </header>
+        )}
 
         <main className="flex-grow flex items-center justify-center p-4 relative z-10 my-8">
           {loadingPublicProfile ? (
@@ -1532,9 +1565,11 @@ export default function App() {
           )}
         </main>
 
-        <footer className="border-t border-zinc-900 bg-black py-4 text-center text-[10px] text-zinc-550 leading-relaxed text-zinc-500 relative z-10">
-          <p>© جميع الحقوق محفوظة لبراند إسمي ذهب • 2026</p>
-        </footer>
+        {!isStandalone && (
+          <footer className="border-t border-zinc-900 bg-black py-4 text-center text-[10px] text-zinc-550 leading-relaxed text-zinc-500 relative z-10">
+            <p>© جميع الحقوق محفوظة لبراند إسمي ذهب • 2026</p>
+          </footer>
+        )}
       </div>
     );
   }

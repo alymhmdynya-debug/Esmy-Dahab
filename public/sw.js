@@ -33,13 +33,14 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests or Firebase API/Auth operations
+  // Skip non-GET requests, Firebase API/Auth, or manifest files to ensure fresh metadata
   if (
     event.request.method !== 'GET' || 
     event.request.url.includes('firestore') || 
     event.request.url.includes('firebase') || 
     event.request.url.includes('googleapis') ||
-    event.request.url.includes('imgbb')
+    event.request.url.includes('imgbb') ||
+    event.request.url.includes('manifest.json')
   ) {
     return;
   }
