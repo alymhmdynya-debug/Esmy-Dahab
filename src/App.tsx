@@ -11,6 +11,7 @@ import { uploadToImgBB } from './lib/imgbb';
 import { Design, AccessCode, Order, User as UserProfile, ConfigApp } from './types';
 import AdminDashboard from './components/AdminDashboard';
 import ReturnPolicy from './components/ReturnPolicy';
+import { updatePwaAssets } from './lib/pwa';
 import { 
   Crown, Search, ShoppingBag, Shield, Sparkles, Check, Gift, Heart, Send, 
   Users, UploadCloud, ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, HelpCircle, Copy, MessageSquare, Share2, Award
@@ -200,33 +201,22 @@ export default function App() {
   // Dynamically configure and inject manifest based on current profile or logged in user
   useEffect(() => {
     let usernameForManifest = '';
+    let level: 1 | 2 | 3 = 1;
     const isProfileViewActive = currentPath.substring(1).trim().length > 0 && !['admin', 'apps', 'api', 'assets', 'icons', 'public'].includes(currentPath.substring(1).trim().toLowerCase());
     
-    // Determine which username to use for the PWA manifest
+    // Determine which username and level to use for the PWA manifest/assets
     if (isProfileViewActive) {
       usernameForManifest = currentPath.substring(1).toLowerCase().trim();
+      if (publicProfile) {
+        level = (publicProfile.level as 1 | 2 | 3) || 1;
+      }
     } else if (userProfile && userProfile.username) {
       usernameForManifest = userProfile.username.toLowerCase().trim();
+      level = (userProfile.level as 1 | 2 | 3) || 1;
     }
 
-    // Always clean up existing dynamic manifest link first
-    const existingManifestLink = document.getElementById('dynamic-manifest') || document.querySelector("link[rel='manifest']");
-    if (existingManifestLink) {
-      existingManifestLink.remove();
-    }
-
-    const link = document.createElement('link');
-    link.id = 'dynamic-manifest';
-    link.rel = 'manifest';
-    if (usernameForManifest) {
-      // Set long-lived cookie for server manifest resolution
-      document.cookie = `esm_username=${usernameForManifest};path=/;max-age=31536000;SameSite=Lax`;
-      link.href = `/${usernameForManifest}/manifest.json`;
-    } else {
-      link.href = '/manifest.json';
-    }
-    document.head.appendChild(link);
-    console.log('PWA Manifest link updated:', link.href);
+    // Call our modular PWA asset and badge updater
+    updatePwaAssets(level, usernameForManifest);
   }, [userProfile, publicProfile, currentPath]);
 
 

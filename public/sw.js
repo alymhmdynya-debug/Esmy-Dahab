@@ -67,3 +67,32 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Handle custom level updates dynamically
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'STAGE_LEVEL_UPDATE') {
+    const { level, iconUrl, manifestUrl } = event.data;
+    console.log(`[Service Worker] User tier updated. Level: ${level}, Icon: ${iconUrl}, Manifest: ${manifestUrl}`);
+    
+    // We can precache the updated icon and manifest dynamically
+    caches.open(CACHE_NAME).then((cache) => {
+      cache.add(iconUrl).catch(e => console.warn('[SW] Failed to cache iconUrl:', e));
+      if (manifestUrl) {
+        cache.add(manifestUrl).catch(e => console.warn('[SW] Failed to cache manifestUrl:', e));
+      }
+    });
+
+    // Notify other windows/clients if applicable
+    self.clients.matchAll().then((clients) => {
+      clients.forEach((client) => {
+        if (client.id !== event.source.id) {
+          client.postMessage({
+            type: 'TIER_SYNCED',
+            level: level
+          });
+        }
+      });
+    });
+  }
+});
+
