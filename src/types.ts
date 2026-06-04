@@ -15,6 +15,11 @@ export interface ConfigApp {
   whatsappNumber: string;
   focusedProduct: 'classic' | 'duo' | 'premium';
   types?: FabricType[];
+  wearableAppUrl?: string;
+  vipAppUrl?: string;
+  stage1IconUrl?: string;
+  stage2IconUrl?: string;
+  stage3IconUrl?: string;
 }
 
 export interface Design {
@@ -38,17 +43,23 @@ export interface AccessCode {
 }
 
 export interface User {
-  uid?: string; // we can map this on load
-  username: string;
-  displayName: string;
-  photoUrl: string;
-  bio: string;
-  phone: string;
-  accessCode: string;
-  level: 1 | 2 | 3;
-  referralCount: number;
-  likes?: number;
-  createdAt: any;
+  id?: string;           // Document ID (هوية الوثيقة، مثل: ESM-XXXX or UID)
+  uid?: string;          // UID of user
+  code?: string;         // نفس Document ID
+  accessCode: string;    // نفس Document ID
+  username: string;      // اسم المستخدم بالإنجليزية (lowercase)
+  arabicName?: string;   // الاسم المعروض بالعربية
+  displayName: string;   // نفس الاسم المعروض
+  photoUrl: string;      // رابط صورة المستخدم
+  bio: string;           // نبذة عن المستخدم
+  level: number;         // المستوى (1 = برونزي، 2 = فضي، 3 = ذهبي)
+  referralCount: number; // عدد الإحالات
+  likes: number;         // عدد الإعجابات
+  views?: number;        // عدد المشاهدات
+  phone?: string;        // رقم الهاتف (اختياري)
+  englishName?: string;  // الاسم بالإنجليزية الكامل (اختياري)
+  appName?: string;      // اسم التطبيق المخصص (اختياري)
+  createdAt?: any;       // تاريخ الإنشاء
 }
 
 export interface Order {

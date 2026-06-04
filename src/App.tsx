@@ -12,6 +12,7 @@ import { Design, AccessCode, Order, User as UserProfile, ConfigApp } from './typ
 import AdminDashboard from './components/AdminDashboard';
 import ReturnPolicy from './components/ReturnPolicy';
 import { updatePwaAssets } from './lib/pwa';
+import { DEFAULT_WEARABLE_APP_URL, DEFAULT_VIP_APP_URL } from './config';
 import { 
   Crown, Search, ShoppingBag, Shield, Sparkles, Check, Gift, Heart, Send, 
   Users, UploadCloud, ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, HelpCircle, Copy, MessageSquare, Share2, Award
@@ -70,7 +71,11 @@ export default function App() {
     premiumPrice: 880,
     premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
     whatsappNumber: '201223043867',
-    focusedProduct: 'premium'
+    focusedProduct: 'premium',
+    wearableAppUrl: DEFAULT_WEARABLE_APP_URL,
+    stage1IconUrl: '/icons/stage1.png',
+    stage2IconUrl: '/icons/stage2.png',
+    stage3IconUrl: '/icons/stage3.png'
   });
 
   // Client states - Home
@@ -154,6 +159,8 @@ export default function App() {
   // VIP setup state
   const [setupUsername, setSetupUsername] = useState<string>('');
   const [setupDisplayName, setSetupDisplayName] = useState<string>('');
+  const [setupArabicName, setSetupArabicName] = useState<string>('');
+  const [setupEnglishName, setSetupEnglishName] = useState<string>('');
   const [setupBio, setSetupBio] = useState<string>('');
   const [setupPhone, setSetupPhone] = useState<string>('');
   const [setupFile, setSetupFile] = useState<File | null>(null);
@@ -288,7 +295,12 @@ export default function App() {
             premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: '201223043867',
             focusedProduct: 'premium',
-            types: defaultTypes
+            types: defaultTypes,
+            wearableAppUrl: DEFAULT_WEARABLE_APP_URL,
+            vipAppUrl: DEFAULT_VIP_APP_URL,
+            stage1IconUrl: '/icons/stage1.png',
+            stage2IconUrl: '/icons/stage2.png',
+            stage3IconUrl: '/icons/stage3.png'
           };
           await setDoc(configDocRef, defaultConfig);
           setConfigApp(defaultConfig);
@@ -305,7 +317,12 @@ export default function App() {
             premiumDescription: data.premiumDescription || "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: data.whatsappNumber || '201223043867',
             focusedProduct: data.focusedProduct || 'premium',
-            types: data.types || defaultTypes
+            types: data.types || defaultTypes,
+            wearableAppUrl: data.wearableAppUrl || DEFAULT_WEARABLE_APP_URL,
+            vipAppUrl: data.vipAppUrl || DEFAULT_VIP_APP_URL,
+            stage1IconUrl: data.stage1IconUrl || '/icons/stage1.png',
+            stage2IconUrl: data.stage2IconUrl || '/icons/stage2.png',
+            stage3IconUrl: data.stage3IconUrl || '/icons/stage3.png'
           };
           setConfigApp(merged);
         }
@@ -458,7 +475,7 @@ export default function App() {
             localStorage.setItem('esm_my_referrals_count', String(liveCount));
 
             // Level upgrade logic: >= 15 level=2, >= 35 level=3
-            let finalLevel: 1 | 2 | 3 = data.level;
+            let finalLevel: 1 | 2 | 3 = (data.level as 1 | 2 | 3) || 1;
             if (liveCount >= 35) {
               finalLevel = 3;
             } else if (liveCount >= 15) {
@@ -485,6 +502,9 @@ export default function App() {
         }
       } else {
         setUserProfile(null);
+        setReferralsCount(0);
+        localStorage.removeItem('esm_my_profile');
+        localStorage.removeItem('esm_my_referrals_count');
       }
     });
 
@@ -586,8 +606,18 @@ export default function App() {
   // Navigate Helper
   const navigateTo = (path: string) => {
     window.history.pushState({}, '', path);
-    setCurrentPath(path);
-    setUrlParams(new URLSearchParams());
+    
+    let cleanPath = path;
+    let searchString = '';
+    
+    const queryIdx = path.indexOf('?');
+    if (queryIdx !== -1) {
+      cleanPath = path.substring(0, queryIdx);
+      searchString = path.substring(queryIdx);
+    }
+    
+    setCurrentPath(cleanPath);
+    setUrlParams(new URLSearchParams(searchString));
   };
 
   // Synchronize visitors like states
@@ -891,15 +921,28 @@ export default function App() {
       } catch (err) {}
 
       // 4. Create user doc
+      const arabic = setupArabicName.trim();
+      const english = setupEnglishName.trim();
+      const finalDisplayName = (arabic && english)
+        ? `${arabic} ● ${english}`
+        : (arabic || english || `@${cleanUsername}`);
+
       const newUserProfile: UserProfile = {
-        username: cleanUsername,
-        displayName: setupDisplayName.trim(),
-        photoUrl,
-        bio: setupBio.trim(),
-        phone: setupPhone.trim(),
+        id: auth.currentUser!.uid,
+        uid: auth.currentUser!.uid,
+        code: activeCode,
         accessCode: activeCode,
+        username: cleanUsername,
+        arabicName: arabic || '',
+        englishName: english || '',
+        displayName: finalDisplayName,
+        bio: setupBio.trim() || 'شخص فحم يقتني ملابس الملوك الفخمة من ESM',
+        phone: setupPhone.trim() || '',
+        photoUrl,
         level: boughtProductLevel, // Level starts according to what product they bought
         referralCount: 0,
+        likes: 0,
+        views: 0,
         createdAt: serverTimestamp()
       };
 
@@ -935,507 +978,10 @@ export default function App() {
 
   // User VIP Dashboard /apps route
   if (isAppsView) {
-    const activeSavedCode = localStorage.getItem('esm_code');
-    const isCodeActivated = !!activeSavedCode;
-
-    return (
-      <div className="min-h-screen bg-black text-white relative flex flex-col justify-between overflow-hidden">
-        <ParticleBackground />
-
-        {/* Global Nav Bar */}
-        <header className="border-b border-gold/10 bg-black/80 sticky top-0 z-40 backdrop-blur w-full">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <button onClick={() => navigateTo('/')} className="flex items-center gap-2 cursor-pointer">
-              <Crown className="w-6 h-6 text-gold gold-glow" />
-              <span className="font-serif font-black tracking-wider text-sm gold-gradient">ESM • إسمي ذهب</span>
-            </button>
-            <button 
-              onClick={() => navigateTo('/')}
-              className="text-xs font-bold text-zinc-400 hover:text-gold flex items-center gap-1 transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>الرئيسية</span>
-            </button>
-          </div>
-        </header>
-
-        <main className="flex-grow flex items-center justify-center p-4 relative z-10 my-8">
-          {/* Gate View: If not logged-in/verified with code */}
-          {!currentUser || !isCodeActivated ? (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md bg-zinc-950/80 border border-gold/20 p-8 rounded-3xl shadow-2xl backdrop-blur-md relative"
-            >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-zinc-900 border border-gold/30 flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-8 h-8 text-gold animate-pulse text-gold" />
-                </div>
-                <h1 className="text-xl font-bold font-serif gold-gradient">بوابة النفاذ الملكي VIP</h1>
-                <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
-                  هذا القسم مخصص حصرياً لمالكي تيشيرت "إسمي ذهب" الفاخر. اكتب كود النفاذ المرفق بقطعكتك لتفعيل رتبتك والحصول على رتبتك الرقمية.
-                </p>
-              </div>
-
-              <form onSubmit={handleGateVerify} className="space-y-4">
-                <div>
-                  <label className="block text-zinc-400 text-xs font-bold mb-2">أدخل كود النفاذ المذهب *</label>
-                  <input
-                    type="text"
-                    required
-                    value={codeInputValue}
-                    onChange={(e) => setCodeInputValue(e.target.value)}
-                    placeholder="ESM-XXXX"
-                    className="w-full px-4 py-3 rounded-xl bg-black border border-zinc-800 text-white text-md font-black font-mono tracking-wider text-center focus:border-gold focus:outline-none placeholder:text-zinc-650"
-                  />
-                </div>
-
-                {gateError && (
-                  <div className="p-3 bg-red-950/40 border border-red-900/40 text-red-300 text-xs text-center rounded-xl leading-relaxed">
-                    {gateError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={checkingCode}
-                  className="w-full py-3 bg-gold text-black rounded-xl font-black text-xs hover:bg-gold/85 transition-colors cursor-pointer shadow-lg shadow-gold/20 flex items-center justify-center"
-                >
-                  {checkingCode ? (
-                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span>التحقق من الكود وتفعيل VIP</span>
-                  )}
-                </button>
-              </form>
-            </motion.div>
-          ) : (
-            /* Activated flow */
-            loadingProfile ? (
-              <div className="text-center">
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                  className="w-10 h-10 border-4 border-gold border-t-transparent rounded-full mx-auto"
-                />
-                <p className="text-xs text-zinc-400 mt-4">جاري تحميل ملفك الفخم...</p>
-              </div>
-            ) : !userProfile ? (
-              /* Setup Profile flow */
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md bg-zinc-950/80 border border-gold/20 p-8 rounded-3xl shadow-2xl backdrop-blur relative"
-              >
-                <div className="text-center mb-6">
-                  <h1 className="text-lg font-black font-serif gold-gradient">إكمال التسجيل للأسياد</h1>
-                  <p className="text-[10px] text-zinc-400 mt-1">تجهيز رتبتك وبطاقتك الملكية للبراند</p>
-                </div>
-
-                <form onSubmit={handleSetupSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-zinc-400 text-[10px] font-bold mb-1.5">اسم الشهرة الظاهر للجميع *</label>
-                    <input
-                      type="text"
-                      required
-                      value={setupDisplayName}
-                      onChange={(e) => setSetupDisplayName(e.target.value)}
-                      placeholder="الأمير أحمد"
-                      className="w-full px-3 py-2 bg-black border border-zinc-800 text-white rounded-xl text-xs focus:outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-zinc-400 text-[10px] font-bold mb-1.5">اسم المستخدم (بالأحرف الانجليزية والأرقام فقط) *</label>
-                    <input
-                      type="text"
-                      required
-                      value={setupUsername}
-                      onChange={(e) => {
-                        const typedVal = e.target.value;
-                        // Strip all spaces right away, filter out Arabic characters, and keep lowercase alphanumeric + dashes
-                        const sanitizedVal = typedVal
-                          .replace(/\s+/g, '')
-                          .replace(/[^a-zA-Z0-9_-]/g, '');
-                        setSetupUsername(sanitizedVal.toLowerCase());
-                      }}
-                      placeholder="ahmed_esm"
-                      className="w-full px-3 py-2 bg-black border border-zinc-800 text-white rounded-xl text-xs focus:outline-none focus:border-gold"
-                      style={{ direction: 'ltr' }}
-                    />
-                    <p className="text-[9px] text-amber-500/80 mt-1 mr-1 text-right">
-                      * يمنع الفراغات والأحرف العربية تلقائياً لضمان سلامة رابط ملفك الشخصي
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-zinc-400 text-[10px] font-bold mb-1.5">
-                      رقم الواتساب أو الهاتف <span className="text-amber-500/80">(اختياري - يستحسن بقوة لربط مكافآت الأسياد)</span> 🎁
-                    </label>
-                    <input
-                      type="tel"
-                      value={setupPhone}
-                      onChange={(e) => setSetupPhone(e.target.value)}
-                      placeholder="مثال: 0122345678"
-                      className="w-full px-3 py-2 bg-black border border-zinc-800 text-white rounded-xl text-xs focus:outline-none focus:border-gold"
-                      style={{ direction: 'ltr' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-zinc-400 text-[10px] font-bold mb-1.5">شرح ووصف مخصص لملفك (البيو) *</label>
-                    <textarea
-                      required
-                      value={setupBio}
-                      onChange={(e) => setSetupBio(e.target.value)}
-                      placeholder="شخص فخم يقتني ملابس الملوك الفخمة من ESM"
-                      className="w-full h-16 px-3 py-2 bg-black border border-zinc-800 text-white rounded-xl text-xs focus:outline-none focus:border-gold resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-zinc-400 text-[10px] font-bold mb-1.5 font-sans">اختر صورتك المتميزة بالتيشيرت *</label>
-                    <div className="border border-dashed border-zinc-800 hover:border-gold/30 transition-colors p-4 rounded-xl flex flex-col justify-center items-center text-center relative cursor-pointer min-h-[110px] bg-black">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        required
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) {
-                            setSetupFile(e.target.files[0]);
-                            setSetupPreview(URL.createObjectURL(e.target.files[0]));
-                          }
-                        }}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                      />
-                      {setupPreview ? (
-                        <img 
-                          src={setupPreview} 
-                          alt="Wearable" 
-                          className="h-20 w-20 rounded-xl object-cover cursor-zoom-in hover:brightness-110 transition-all" 
-                          onClick={() => setFullscreenImage(setupPreview)}
-                        />
-                      ) : (
-                        <div className="space-y-1">
-                          <UploadCloud className="w-6 h-6 text-zinc-600 mx-auto" />
-                          <span className="block text-zinc-500 text-[10px] font-bold">ارفع لقطتك الفخمة بالتيشيرت</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {setupError && (
-                    <div className="p-3 bg-red-950/40 border border-red-900/35 text-red-400 text-xs rounded-xl">
-                      {setupError}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={savingSetup}
-                    className="w-full py-2.5 bg-gold hover:bg-gold/95 transition-colors text-black text-xs font-black rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow"
-                  >
-                    {savingSetup ? (
-                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span>تأكيد وإنشاء الملف التعريفي الملكي</span>
-                    )}
-                  </button>
-                </form>
-              </motion.div>
-            ) : (
-              /* DASHBOARD VIEW */
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-xl bg-zinc-950/80 border border-gold/20 p-6 md:p-8 rounded-3xl shadow-2xl backdrop-blur relative space-y-6"
-              >
-                {/* Profile card header */}
-                <div className="flex flex-col md:flex-row items-center gap-6 border-b border-zinc-900 pb-6 text-center md:text-right">
-                  <div className="relative">
-                    <img 
-                      src={userProfile.photoUrl} 
-                      alt={userProfile.displayName} 
-                      className="w-24 h-24 rounded-full object-cover border-2 border-gold shadow-md cursor-zoom-in hover:brightness-110 transition-all"
-                      onClick={() => setFullscreenImage(userProfile.photoUrl)}
-                    />
-                    {userProfile.level === 3 && (
-                      <div className="absolute -top-3 -right-3 bg-black border border-gold rounded-full p-1.5 shadow shadow-gold/40">
-                        <Crown className="w-5 h-5 text-gold gold-glow" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex flex-col md:flex-row md:items-center gap-2">
-                      <h2 className="text-xl font-bold text-white font-serif">{userProfile.displayName}</h2>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-wider uppercase inline-block mx-auto md:mx-0 ${
-                        userProfile.level === 3 ? 'bg-gold text-black' :
-                        userProfile.level === 2 ? 'bg-zinc-200 text-black' :
-                        'bg-zinc-800 text-zinc-300'
-                      }`}>
-                        {userProfile.level === 3 ? 'رتبة التاج الذهبي 👑' :
-                         userProfile.level === 2 ? 'الرتبة الفضية الفاخرة🥈' :
-                         'الرتبة البرونزية كلاسيك🥉'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gold/80 font-mono tracking-wider font-semibold">@{userProfile.username}</p>
-                    <p className="text-xs text-zinc-400 italic max-w-sm">"{userProfile.bio}"</p>
-                  </div>
-                </div>
-
-                {/* Custom PWA Installation Button & Adaptive Guide */}
-                <div className="bg-gradient-to-r from-amber-600/10 via-gold/10 to-transparent border border-gold/30 rounded-2xl p-4 space-y-3 text-right relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-gold/10 blur-xl rounded-full" />
-                  <div className="flex items-start gap-3 flex-row-reverse relative z-10">
-                    <div className="p-2 bg-gold/20 border border-gold/30 rounded-xl text-gold mt-1">
-                      <ShoppingBag className="w-5 h-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-black text-white">تثبيت تطبيقك الخاص المذهب باسمك وصورتك 📱</h4>
-                      <p className="text-[10px] text-zinc-300 leading-relaxed">
-                        قم بتثبيت تطبيقك الشخصي النادر {userProfile.displayName} في شاشة هاتفك الرئيسية لتتابعه وتفتحه حتى <strong className="text-gold">دون الحاجة لإنترنت (أوفلاين) وبدون متصفح!</strong>
-                      </p>
-                    </div>
-                  </div>
-
-                  {(() => {
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-                    
-                    return (
-                      <div className="pt-1 flex flex-col items-center gap-2 relative z-10 w-full">
-                        {showInstallBtn && deferredPrompt ? (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={async () => {
-                              if (!deferredPrompt) return;
-                              deferredPrompt.prompt();
-                              const { outcome } = await deferredPrompt.userChoice;
-                              console.log('Installation outcome:', outcome);
-                              setDeferredPrompt(null);
-                              setShowInstallBtn(false);
-                            }}
-                            className="w-full py-2 bg-gradient-to-r from-amber-500 to-gold text-black text-[11px] font-black rounded-xl cursor-pointer hover:shadow hover:shadow-gold/20 transition-all flex items-center justify-center gap-2"
-                          >
-                            <span>اضغط هنا لتثبيت تطبيقك الشخصي فورا ⚡</span>
-                          </motion.button>
-                        ) : (
-                          <div className="w-full text-center bg-black/40 border border-zinc-900 rounded-xl p-3 space-y-2">
-                            <span className="text-[9px] text-zinc-450 font-bold block leading-relaxed">
-                              {isIOS 
-                                ? '💡 لتثبيت تطبيقك على آيفون: اضغط مشاركة [Share] ثم اختر "إضافة إلى الشاشة الرئيسية" [Add to Home Screen] 👑' 
-                                : '👑 مبروك! تطبيقك جاهز ومحمي دائمًا. اضغط على خيارات متصفحك ثم "تثبيت التطبيق" أو "إضافة للرئيسية".'
-                              }
-                            </span>
-                            <div className="flex gap-2 justify-center">
-                              <span className="text-[8px] bg-zinc-900 text-gold px-2 py-0.5 rounded border border-zinc-800 font-bold">دعم كامل للأوفلاين (بلا نت) ⚡</span>
-                              <span className="text-[8px] bg-zinc-900 text-zinc-300 px-2 py-0.5 rounded border border-zinc-800 font-bold">حسب رتبتك الحالية</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Level Up Statistics widgets */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-zinc-950 border border-zinc-900 rounded-xl p-3 text-center space-y-1 flex flex-col justify-center shadow-lg">
-                    <Users className="w-4 h-4 text-gold mx-auto" />
-                    <div className="text-xs font-black font-mono text-white">{referralsCount}</div>
-                    <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">عدد الإحالات</div>
-                  </div>
-
-                  <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center space-y-1 flex flex-col justify-center shadow-lg">
-                    <Heart className="w-4 h-4 text-red-500 fill-red-500/20 mx-auto animate-pulse" />
-                    <div className="text-xs font-black font-mono text-white">
-                      {userRank ? `#${userRank}` : '#1'}
-                    </div>
-                    <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">ترتيب القلوب</div>
-                  </div>
-
-                  <div className="bg-zinc-950 border border-zinc-900 rounded-xl p-3 text-center space-y-1 flex flex-col justify-center shadow-lg">
-                    <Award className="w-4 h-4 text-gold mx-auto" />
-                    <div className="text-[9px] font-black text-gold">
-                      {userProfile.level === 3 ? 'تاج مذهب' :
-                       userProfile.level === 2 ? `رتبة فضية` :
-                       `رتبة برونزية`}
-                    </div>
-                    <div className="text-[9px] font-bold text-zinc-400">الرتبة الخاصة</div>
-                  </div>
-                </div>
-
-                {/* Royal Ascension Progress Bar */}
-                {(() => {
-                  const currentLevel = userProfile.level;
-                  const currentRefs = referralsCount;
-                  let nextLevelName = '';
-                  let remaining = 0;
-                  let targetForBar = 0;
-                  let percentage = 0;
-
-                  if (currentLevel === 1) {
-                    nextLevelName = '🥈 الرتبة الفضية الفاخرة';
-                    remaining = Math.max(0, 15 - currentRefs);
-                    targetForBar = 15;
-                    percentage = Math.min(100, Math.max(0, (currentRefs / 15) * 100));
-                  } else if (currentLevel === 2) {
-                    nextLevelName = '👑 رتبة التاج الذهبي الملكية';
-                    remaining = Math.max(0, 35 - currentRefs);
-                    targetForBar = 35;
-                    const diffRefs = Math.max(0, currentRefs - 15);
-                    percentage = Math.min(100, Math.max(0, (diffRefs / 20) * 100));
-                  } else {
-                    nextLevelName = 'القمة الملكية';
-                    remaining = 0;
-                    targetForBar = 35;
-                    percentage = 100;
-                  }
-
-                  return (
-                    <div className="bg-black/60 border border-zinc-900 rounded-2xl p-4 space-y-3 text-right">
-                      <div className="flex justify-between items-center flex-row-reverse">
-                        <span className="text-xs font-bold text-white flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-gold animate-pulse" />
-                          <span>مؤشر الارتقاء الملكي للقمة</span>
-                        </span>
-                        <span className="text-[10px] font-bold text-gold font-mono">
-                          {currentLevel === 3 ? 'مستوى التاج الأقصى 🎉' : `متبقي ${remaining} إحالة`}
-                        </span>
-                      </div>
-
-                      {/* Bar track */}
-                      <div className="w-full bg-zinc-900 border border-zinc-800/85 h-2.5 rounded-full overflow-hidden relative">
-                        <motion.div 
-                          className="bg-gradient-to-r from-amber-600 to-gold h-full rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${percentage}%` }}
-                          transition={{ duration: 0.8, ease: 'easeOut' }}
-                        />
-                      </div>
-
-                      <div className="flex justify-between items-center text-[9px] text-zinc-400 flex-row-reverse">
-                        <span>المرتبة القادمة: <strong className="text-zinc-200">{nextLevelName}</strong></span>
-                        <span className="font-mono">{Math.round(percentage)}% مكتمل</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Referrals loop instructions details */}
-                <div className="bg-zinc-900/40 border border-zinc-900 p-4 rounded-xl space-y-2">
-                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5 justify-end">
-                    <span>خطوات الارتقاء وأيقونات تطبيقك الشخصي</span>
-                    <Sparkles className="w-3.5 h-3.5 text-gold" />
-                  </h4>
-                  <p className="text-[10px] text-zinc-400 text-right mb-4">
-                    اجمع الزيارات لترقية رتبتك وتغيير أيقونة تطبيقك المثبت على هاتفك (تتحدث الأيقونة تلقائياً عند الترقي).
-                  </p>
-                  
-                  <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-                    {/* Level 1: Bronze */}
-                    <div className={`p-2 rounded-xl flex flex-col items-center gap-2 border ${userProfile.level === 1 ? 'border-amber-700/50 bg-amber-900/20' : 'border-zinc-800 bg-black/40'} relative`}>
-                      {userProfile.level === 1 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-700 text-white text-[8px] px-2 py-0.5 rounded-full z-10 w-max">التطبيق الحالي</span>}
-                      {userProfile.level > 1 && <div className="absolute inset-0 bg-black/60 rounded-xl z-10 flex items-center justify-center backdrop-blur-[1px]"><Check className="w-6 h-6 text-emerald-500" /></div>}
-                      <img src="/icons/stage1.png" alt="Bronze App Icon" className="w-12 h-12 rounded-xl border border-zinc-700 shadow-md" />
-                      <div>
-                        <div className="text-[10px] font-bold text-zinc-300">برونزي</div>
-                        <div className="text-[8px] text-zinc-500">الأساسي</div>
-                      </div>
-                    </div>
-
-                    {/* Level 2: Silver */}
-                    <div className={`p-2 rounded-xl flex flex-col items-center gap-2 border ${userProfile.level === 2 ? 'border-zinc-400/50 bg-zinc-400/20' : 'border-zinc-800 bg-black/40'} relative`}>
-                      {userProfile.level === 2 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-zinc-400 text-black text-[8px] px-2 py-0.5 rounded-full z-10 font-bold w-max">التطبيق الحالي</span>}
-                      {userProfile.level > 2 && <div className="absolute inset-0 bg-black/60 rounded-xl z-10 flex items-center justify-center backdrop-blur-[1px]"><Check className="w-6 h-6 text-emerald-500" /></div>}
-                      <img src="/icons/stage2.png" alt="Silver App Icon" className="w-12 h-12 rounded-xl border border-zinc-600 shadow-md opacity-90" />
-                      <div>
-                        <div className="text-[10px] font-bold text-zinc-300">فضي</div>
-                        <div className="text-[8px] text-zinc-500">15 زيارة</div>
-                      </div>
-                    </div>
-
-                    {/* Level 3: Gold (Royal) */}
-                    <div className={`p-2 rounded-xl flex flex-col items-center gap-2 border ${userProfile.level === 3 ? 'border-gold/50 bg-gold/20' : 'border-zinc-800 bg-black/40'} relative`}>
-                      {userProfile.level === 3 && <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gold text-black text-[8px] px-2 py-0.5 rounded-full z-10 font-bold w-max">أيقونتك الحالية 👑</span>}
-                      <img src="/icons/stage3.png" alt="Gold App Icon" className="w-12 h-12 rounded-xl border border-gold/40 shadow-md shadow-gold/20 opacity-90" />
-                      <div>
-                        <div className="text-[10px] font-bold text-gold">التاج الذهبي</div>
-                        <div className="text-[8px] text-zinc-500">35 زيارة</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <ul className="text-[10px] text-zinc-400 space-y-1 text-right list-disc list-inside mt-4 pt-4 border-t border-zinc-800/60">
-                    <li>شارك رابطك المخصص والفريد بالأسفل مع أصدقائك ومعارفك.</li>
-                    <li>المستوى الأول (برونزي) - تفعيل تلقائي عند تفعيل كود التيشيرت.</li>
-                    <li>المستوى الثاني (فضي) - عند إكمال 15 إحالة صديق مهتم بنجاح.</li>
-                    <li>المستوى الثالث الملكي (ذهبي وتاج) - عند اكتمال 35 إحالة.</li>
-                  </ul>
-                </div>
-
-                {/* Copying link */}
-                <div className="space-y-2">
-                  <label className="block text-zinc-400 text-[10px] font-bold text-right">رابط الترويج ومشاركة الفخامة الخاص بك</label>
-                  <div className="flex gap-2 relative">
-                    <button
-                      onClick={() => copyShareLink(userProfile.username)}
-                      className="px-4 py-2.5 bg-gold hover:bg-gold/90 text-black text-xs font-black rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-                    >
-                      {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedLink ? 'تم نسخ الرابط!' : 'نسخ رابطي'}</span>
-                    </button>
-                    <input
-                      type="text"
-                      readOnly
-                      value={`${window.location.origin}/${userProfile.username}?ref=${userProfile.username}`}
-                      className="flex-grow px-3 py-2 bg-black border border-zinc-800 text-zinc-300 font-mono text-[11px] rounded-lg focus:outline-none text-left"
-                      style={{ direction: 'ltr' }}
-                    />
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: 'براند إسمي ذهب الفاخر',
-                          text: `أهلاً، شاهد تيشيرتي المذهب بالتاج الفخم من براند إسمي ذهب!`,
-                          url: `${window.location.origin}/${userProfile.username}?ref=${userProfile.username}`
-                        });
-                      } else {
-                        copyShareLink(userProfile.username);
-                      }
-                    }}
-                    className="w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[10px] font-bold rounded-lg cursor-pointer transition-colors border border-zinc-800 flex items-center justify-center gap-1"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>مشاركة الرابط مع الأصدقاء</span>
-                  </button>
-                </div>
-
-                <div className="text-center pt-2">
-                  <button 
-                    onClick={() => {
-                      // Logout action and clear states
-                      auth.signOut();
-                      localStorage.removeItem('esm_code');
-                      navigateTo('/apps');
-                    }}
-                    className="text-red-400/80 hover:text-red-400 font-medium text-[10px] underline cursor-pointer"
-                  >
-                    تسجيل الخروج من لوحة الـ VIP
-                  </button>
-                </div>
-              </motion.div>
-            )
-          )}
-        </main>
-
-        <footer className="border-t border-zinc-900 bg-black py-4 text-center text-[10px] text-zinc-550 text-zinc-500 relative z-10">
-          <p>© جميع الحقوق محفوظة لبراند إسمي ذهب • 2026</p>
-        </footer>
-      </div>
-    );
+    window.location.replace(configApp.vipAppUrl || DEFAULT_VIP_APP_URL);
+    return null;
   }
+
 
   // PUBLIC PROFILE VIEW /{username}
   if (isProfileView) {
@@ -1612,11 +1158,14 @@ export default function App() {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigateTo('/apps')}
+              onClick={() => {
+                const targetUrl = configApp.vipAppUrl || DEFAULT_VIP_APP_URL;
+                window.open(targetUrl, '_blank');
+              }}
               className="px-4 py-2 rounded-xl bg-gold text-black text-xs font-black hover:bg-gold/90 transition-colors cursor-pointer flex items-center gap-1 shadow-sm shadow-gold/20"
             >
-              <Award className="w-3.5 h-3.5" />
-              <span>تسجيل Wearable</span>
+              <Crown className="w-3.5 h-3.5 text-black" />
+              <span>بوابة الدخول الملكي VIP 👑</span>
             </button>
             <button 
               onClick={() => setIsPolicyOpen(true)}

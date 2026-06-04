@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { uploadToImgBB } from '../lib/imgbb';
 import { Design, AccessCode, Order, User as UserProfile, ConfigApp } from '../types';
+import { DEFAULT_VIP_APP_URL, DEFAULT_WEARABLE_APP_URL } from '../config';
 import { 
   LogOut, Shield, ShieldCheck, ShoppingBag, Image as ImageIcon, 
   TrendingUp, Clock, CheckCircle, Trash2, Plus, Crown,
@@ -43,9 +44,17 @@ export default function AdminDashboard() {
     premiumDescription: '',
     whatsappNumber: '201223043867',
     focusedProduct: 'premium',
-    types: []
+    types: [],
+    wearableAppUrl: DEFAULT_WEARABLE_APP_URL,
+    vipAppUrl: DEFAULT_VIP_APP_URL,
+    stage1IconUrl: '/icons/stage1.png',
+    stage2IconUrl: '/icons/stage2.png',
+    stage3IconUrl: '/icons/stage3.png'
   });
   const [savingPrices, setSavingPrices] = useState<boolean>(false);
+  const [uploadingStage1, setUploadingStage1] = useState<boolean>(false);
+  const [uploadingStage2, setUploadingStage2] = useState<boolean>(false);
+  const [uploadingStage3, setUploadingStage3] = useState<boolean>(false);
 
   // Dynamic Custom Types inputs for the brand (الأنواع والخامات المتاحة)
   const [newTypeName, setNewTypeName] = useState<string>('');
@@ -71,6 +80,12 @@ export default function AdminDashboard() {
   const [customerProduct, setCustomerProduct] = useState<'classic' | 'duo' | 'premium'>('classic');
   const [generatingCode, setGeneratingCode] = useState<boolean>(false);
   const [newlyGeneratedCode, setNewlyGeneratedCode] = useState<string>('');
+
+  // Bulk Access Codes States
+  const [bulkCount, setBulkCount] = useState<number>(10);
+  const [bulkGeneratedCodes, setBulkGeneratedCodes] = useState<string[]>([]);
+  const [generatingBulk, setGeneratingBulk] = useState<boolean>(false);
+  const [bulkCopied, setBulkCopied] = useState<boolean>(false);
 
   // Orders list
   const [orders, setOrders] = useState<Order[]>([]);
@@ -119,7 +134,12 @@ export default function AdminDashboard() {
             premiumDescription: data.premiumDescription ?? '',
             whatsappNumber: data.whatsappNumber ?? '201223043867',
             focusedProduct: data.focusedProduct ?? 'premium',
-            types: data.types ?? defaultTypes
+            types: data.types ?? defaultTypes,
+            wearableAppUrl: data.wearableAppUrl ?? DEFAULT_WEARABLE_APP_URL,
+            vipAppUrl: data.vipAppUrl ?? DEFAULT_VIP_APP_URL,
+            stage1IconUrl: data.stage1IconUrl ?? '/icons/stage1.png',
+            stage2IconUrl: data.stage2IconUrl ?? '/icons/stage2.png',
+            stage3IconUrl: data.stage3IconUrl ?? '/icons/stage3.png'
           });
         } else {
           // Initialize if absent
@@ -328,10 +348,6 @@ export default function AdminDashboard() {
   // Generating VIP codes
   const handleGenerateCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !customerPhone) {
-      alert('يرجى تعبئة كافة تفاصيل المشترك!');
-      return;
-    }
     setGeneratingCode(true);
     try {
       const uniqueSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -339,8 +355,8 @@ export default function AdminDashboard() {
 
       await setDoc(doc(db, 'accessCodes', code), {
         code,
-        name: customerName,
-        phone: customerPhone,
+        name: customerName || "عميل مذهب",
+        phone: customerPhone || "",
         product: customerProduct,
         used: false,
         createdAt: serverTimestamp()
@@ -356,6 +372,48 @@ export default function AdminDashboard() {
     } finally {
       setGeneratingCode(false);
     }
+  };
+
+  // Generating Bulk VIP Codes
+  const handleGenerateBulkCodes = async () => {
+    if (bulkCount < 1 || bulkCount > 100) {
+      alert('يرجى اختيار عدد أكواد ما بين 1 و 100!');
+      return;
+    }
+    setGeneratingBulk(true);
+    setBulkCopied(false);
+    try {
+      const generated: string[] = [];
+      for (let i = 0; i < bulkCount; i++) {
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const code = `ESM-${uniqueSuffix}`;
+        
+        await setDoc(doc(db, 'accessCodes', code), {
+          code,
+          name: "عميل مذهب (توليد مكثف)",
+          phone: "",
+          product: customerProduct,
+          used: false,
+          createdAt: serverTimestamp()
+        });
+        generated.push(code);
+      }
+      setBulkGeneratedCodes(generated);
+      alert(`تم توليد ${generated.length} كود مذهب جديد دفعة واحدة! يمكنك نسخهم الآن.`);
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء توليد الأكواد المكثفة.');
+    } finally {
+      setGeneratingBulk(false);
+    }
+  };
+
+  const handleCopyBulk = () => {
+    if (bulkGeneratedCodes.length === 0) return;
+    const textToCopy = bulkGeneratedCodes.join('\n');
+    navigator.clipboard.writeText(textToCopy);
+    setBulkCopied(true);
+    setTimeout(() => setBulkCopied(false), 2000);
   };
 
   // Order status progression
@@ -631,25 +689,23 @@ export default function AdminDashboard() {
 
                   <form onSubmit={handleGenerateCode} className="space-y-4">
                     <div>
-                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2">اسم المشتري</label>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2">اسم المشتري <span className="text-zinc-550 text-[9px] font-normal">(اختياري)</span></label>
                       <input
                         type="text"
-                        required
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="أحمد محمد"
+                        placeholder="مثال: أحمد محمد (يمكن تركه فارغاً)"
                         className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2">رقم جوال تواصل وواتساب</label>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2">رقم جوال تواصل وواتساب <span className="text-zinc-550 text-[9px] font-normal">(اختياري)</span></label>
                       <input
                         type="tel"
-                        required
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
-                        placeholder="201234567890"
+                        placeholder="مثال: 0122000000 (يمكن تركه فارغاً)"
                         className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold"
                         style={{ direction: 'ltr' }}
                       />
@@ -693,6 +749,60 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                   )}
+
+                  {/* Bulk Code Gen Form */}
+                  <div className="border-t border-zinc-900 mt-6 pt-6 space-y-4">
+                    <h5 className="text-xs font-bold text-amber-500 uppercase flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                      <span>توليد مكثف ومجمع للأكواد (Bulk)</span>
+                    </h5>
+                    
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2">عدد الأكواد المطلوبة لتوليدها دفعة واحدة</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={bulkCount}
+                        onChange={(e) => setBulkCount(parseInt(e.target.value) || 10)}
+                        placeholder="10"
+                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={generatingBulk}
+                      onClick={handleGenerateBulkCodes}
+                      className="w-full py-2 bg-zinc-800 text-white hover:bg-zinc-700 hover:text-gold transition-colors font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer border border-zinc-700"
+                    >
+                      {generatingBulk ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span>توليد دفعة {bulkCount} أكواد دفعة واحدة</span>
+                      )}
+                    </button>
+
+                    {bulkGeneratedCodes.length > 0 && (
+                      <div className="p-3 bg-zinc-950/80 border border-zinc-900 rounded-xl space-y-3">
+                        <span className="text-[10px] text-zinc-400 font-bold block text-right">الأكواد التي تم توليدها الآن:</span>
+                        <textarea
+                          readOnly
+                          value={bulkGeneratedCodes.join('\n')}
+                          className="w-full h-32 p-2 bg-black border border-zinc-900 text-gold text-xs font-mono font-black rounded-lg resize-none focus:outline-none"
+                          style={{ direction: 'ltr' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCopyBulk}
+                          className="w-full py-2 bg-gold text-black rounded text-[11px] font-black cursor-pointer hover:bg-gold/90 transition-colors flex items-center justify-center gap-1"
+                        >
+                          {bulkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{bulkCopied ? 'تم نسخ جميع الأكواد بنجاح!' : 'نسخ جميع الأكواد المذكورة'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Code Table */}
@@ -1029,7 +1139,7 @@ export default function AdminDashboard() {
                   <h4 className="text-xs font-extrabold text-white border-b border-zinc-900 pb-2 text-right">3. عرض الكابلز الثنائي</h4>
                   <div>
                     <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">السعر (Duo Price)</label>
-                    <div className="relative">
+                    <div className="relative font-mono">
                       <input
                         type="number"
                         required
@@ -1066,6 +1176,148 @@ export default function AdminDashboard() {
                     style={{ direction: 'ltr' }}
                   />
                   <span className="text-[10px] text-zinc-500 mt-1 block text-right">الرقم المعتمد لتلقي وإرسال الكتالوج المذهب والتواصل مع العملاء</span>
+                </div>
+
+                {/* VIP PORTAL APP LINK */}
+                <div className="border border-zinc-900 p-4 rounded-xl bg-zinc-950/40 space-y-2">
+                  <label className="block text-zinc-400 text-xs font-semibold mb-1 text-right">رابط التطبيق الثاني (بوابة VIP وتعديل الحسابات للأسياد)</label>
+                  <input
+                    type="url"
+                    required
+                    value={prices.vipAppUrl || ''}
+                    onChange={(e) => setPrices({ ...prices, vipAppUrl: e.target.value })}
+                    placeholder="https://esmy-dahab-vip.pages.dev"
+                    className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold font-mono rounded-lg focus:outline-none"
+                    style={{ direction: 'ltr' }}
+                  />
+                  <span className="text-[10px] text-zinc-500 mt-1 block text-right">
+                    الرابط المعتمد لبوبة VIP المخصصة لتسجيل والتحكم بحسابات الأعضاء. اسم الحقل في Firestore: <strong className="text-gold font-mono">vipAppUrl</strong>
+                  </span>
+                </div>
+
+                {/* STAGE ICONS CONFIGURATION */}
+                <div className="border border-zinc-900 p-4 rounded-xl bg-zinc-950/40 space-y-4 text-right">
+                  <h4 className="text-xs border-b border-zinc-950 pb-2 text-gold font-extrabold flex items-center justify-between">
+                    <span className="text-[9px] text-zinc-500 font-normal">تتحمل على ImgBB تلقائيًا</span>
+                    <span>👑 تخصيص أيقونات الرتب والمستويات</span>
+                  </h4>
+
+                  {/* Stage 1 Icon */}
+                  <div className="space-y-2">
+                    <label className="block text-zinc-400 text-xs font-semibold">أيقونة المستوى الأول: الرتبة البرونزية (Stage 1)</label>
+                    <div className="flex gap-2 items-center">
+                      <img src={prices.stage1IconUrl || '/icons/stage1.png'} alt="Stage 1" className="w-8 h-8 rounded border border-zinc-805 object-cover bg-black" />
+                      <input
+                        type="text"
+                        value={prices.stage1IconUrl || ''}
+                        onChange={(e) => setPrices({ ...prices, stage1IconUrl: e.target.value })}
+                        placeholder="/icons/stage1.png"
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <label className="px-3 py-1.5 bg-gold/15 hover:bg-gold/25 border border-gold/30 text-gold text-xs font-bold rounded-lg cursor-pointer transition-all">
+                        {uploadingStage1 ? 'جاري الرفع...' : 'رفع صورة 📤'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setUploadingStage1(true);
+                              try {
+                                const url = await uploadToImgBB(e.target.files[0]);
+                                setPrices(prev => ({ ...prev, stage1IconUrl: url }));
+                                alert('تم رفع أيقومة المستوى الأول بنجاح!');
+                              } catch (err) {
+                                console.error(err);
+                                alert('فشل رفع الأيقونة.');
+                              } finally {
+                                setUploadingStage1(false);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Stage 2 Icon */}
+                  <div className="space-y-2">
+                    <label className="block text-zinc-400 text-xs font-semibold">أيقونة المستوى الثاني: الرتبة الفضية (Stage 2)</label>
+                    <div className="flex gap-2 items-center">
+                      <img src={prices.stage2IconUrl || '/icons/stage2.png'} alt="Stage 2" className="w-8 h-8 rounded border border-zinc-805 object-cover bg-black" />
+                      <input
+                        type="text"
+                        value={prices.stage2IconUrl || ''}
+                        onChange={(e) => setPrices({ ...prices, stage2IconUrl: e.target.value })}
+                        placeholder="/icons/stage2.png"
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <label className="px-3 py-1.5 bg-gold/15 hover:bg-gold/25 border border-gold/30 text-gold text-xs font-bold rounded-lg cursor-pointer transition-all">
+                        {uploadingStage2 ? 'جاري الرفع...' : 'رفع صورة 📤'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setUploadingStage2(true);
+                              try {
+                                const url = await uploadToImgBB(e.target.files[0]);
+                                setPrices(prev => ({ ...prev, stage2IconUrl: url }));
+                                alert('تم رفع أيقونة المستوى الثاني بنجاح!');
+                              } catch (err) {
+                                console.error(err);
+                                alert('فشل رفع الأيقونة.');
+                              } finally {
+                                setUploadingStage2(false);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Stage 3 Icon */}
+                  <div className="space-y-2">
+                    <label className="block text-zinc-400 text-xs font-semibold">أيقونة المستوى الثالث: التاج الذهبي الملكي (Stage 3)</label>
+                    <div className="flex gap-2 items-center">
+                      <img src={prices.stage3IconUrl || '/icons/stage3.png'} alt="Stage 3" className="w-8 h-8 rounded border border-zinc-805 object-cover bg-black" />
+                      <input
+                        type="text"
+                        value={prices.stage3IconUrl || ''}
+                        onChange={(e) => setPrices({ ...prices, stage3IconUrl: e.target.value })}
+                        placeholder="/icons/stage3.png"
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <label className="px-3 py-1.5 bg-gold/15 hover:bg-gold/25 border border-gold/30 text-gold text-xs font-bold rounded-lg cursor-pointer transition-all">
+                        {uploadingStage3 ? 'جاري الرفع...' : 'رفع صورة 📤'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setUploadingStage3(true);
+                              try {
+                                const url = await uploadToImgBB(e.target.files[0]);
+                                setPrices(prev => ({ ...prev, stage3IconUrl: url }));
+                                alert('تم رفع أيقونة المستوى الثالث بنجاح!');
+                              } catch (err) {
+                                console.error(err);
+                                alert('فشل رفع الأيقونة.');
+                              } finally {
+                                setUploadingStage3(false);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 {/* DYNAMIC TYPES / Kinds SECTION */}
