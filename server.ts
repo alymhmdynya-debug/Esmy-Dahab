@@ -164,6 +164,74 @@ app.get('/manifest.json', async (req, res) => {
   });
 });
 
+// Dynamic XML Sitemap for advanced crawling and search indexing
+app.get('/sitemap.xml', async (req, res) => {
+  const usersRef = collection(db, 'users');
+  const designsRef = collection(db, 'designs');
+  
+  let usersList: string[] = [];
+  let designsList: string[] = [];
+
+  try {
+    const usersSnap = await getDocs(usersRef);
+    usersSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.username) {
+        usersList.push(data.username.toLowerCase().trim());
+      }
+    });
+
+    const designsSnap = await getDocs(designsRef);
+    designsSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.id) {
+        designsList.push(data.id);
+      }
+    });
+  } catch (err) {
+    console.error('Error compiling sitemap URLs for SEO:', err);
+  }
+
+  // Generate XML content
+  const domain = "https://esmydahab.com";
+  const currentDate = new Date().toISOString().split('T')[0];
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+
+  // 1. Static Landing Pages
+  xml += `  <url>\n    <loc>${domain}/</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n`;
+
+  // 2. Dynamic User Profiles
+  usersList.forEach(username => {
+    xml += `  <url>\n    <loc>${domain}/${encodeURIComponent(username)}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+  });
+
+  // 3. Dynamic Name Designs Links based on query param for SEO keywords
+  designsList.forEach(designId => {
+    const searchName = designId.replace('design_', '');
+    xml += `  <url>\n    <loc>${domain}/?search=${encodeURIComponent(searchName)}</loc>\n    <lastmod>${currentDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n`;
+  });
+
+  xml += `</urlset>`;
+
+  res.setHeader('Content-Type', 'application/xml');
+  return res.send(xml);
+});
+
+// Semantic robot file directing crawlers correctly
+app.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /api/*
+
+Sitemap: https://esmydahab.com/sitemap.xml
+`);
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

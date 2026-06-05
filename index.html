@@ -31,49 +31,126 @@
     <link rel="icon" type="image/png" href="/icons/stage3.png" />
     <link id="dynamic-manifest" rel="manifest" href="/manifest.json" />
 
+    <!-- Additional Rich SEO Meta Tags -->
+    <meta name="geo.region" content="EG" />
+    <meta name="geo.placename" content="Cairo" />
+    <meta name="language" content="Arabic" />
+    <meta name="theme-color" content="#D4AF37" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="إسمي ذهب" />
+
     <!-- Structured JSON-LD Data for SEO Search Supremacy (Product & Local Business Schema) -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org/",
-      "@type": "Product",
-      "name": "تيشيرت إسمي ذهب الأوفرسايز الفاخر بالاسم",
-      "image": [
-        "https://i.postimg.cc/zXbswB4x/ali.png",
-        "https://i.postimg.cc/7hrFvR9W/mohamed.png",
-        "https://i.postimg.cc/rF62sWJc/maryam.png"
-      ],
-      "description": "تيشيرت قطن مصري 100% ثقيل للغاية بقصة أوفرسايز (وان سايز) عصرية فخمة ومريحة للغاية، مطرز باسمك بالخط العربي الفاخر والتاج المذهب ومزود باختيارات شريط الظهر المخصص.",
-      "sku": "ED-OVERS-01",
-      "brand": {
-        "@type": "Brand",
-        "name": "إسمي ذهب • ESMY DAHAB"
+    [
+      {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": "تيشيرت إسمي ذهب الأوفرسايز الفاخر بالاسم",
+        "image": [
+          "https://i.postimg.cc/zXbswB4x/ali.png",
+          "https://i.postimg.cc/7hrFvR9W/mohamed.png",
+          "https://i.postimg.cc/rF62sWJc/maryam.png"
+        ],
+        "description": "تيشيرت قطن مصري 100% ثقيل للغاية بقصة أوفرسايز (وان سايز) عصرية فخمة ومريحة للغاية، مطرز باسمك بالخط العربي الفاخر والتاج المذهب ومزود باختيارات شريط الظهر المخصص.",
+        "sku": "ED-OVERS-01",
+        "brand": {
+          "@type": "Brand",
+          "name": "إسمي ذهب • ESMY DAHAB"
+        },
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "EGP",
+          "lowPrice": "880",
+          "highPrice": "1550",
+          "offerCount": "2",
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "العرض الفردي المميز تيشيرت واحد بالاسم",
+              "price": "880",
+              "priceCurrency": "EGP",
+              "availability": "https://schema.org/InStock",
+              "url": "https://esmydahab.com"
+            },
+            {
+              "@type": "Offer",
+              "name": "العرض الثنائي المشترك قطعتين باسمين مختلفين",
+              "price": "1550",
+              "priceCurrency": "EGP",
+              "availability": "https://schema.org/InStock",
+              "url": "https://esmydahab.com"
+            }
+          ]
+        }
       },
-      "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "EGP",
-        "lowPrice": "880",
-        "highPrice": "1550",
-        "offerCount": "2",
-        "offers": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "إسمي ذهب • ESMY DAHAB",
+        "url": "https://esmydahab.com",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://esmydahab.com/?search={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "إسمي ذهب • ESMY DAHAB",
+        "url": "https://esmydahab.com",
+        "logo": "https://i.ibb.co/Lkv3Xp4/Esm-Dahab_Logo.png",
+        "sameAs": [
+          "https://www.facebook.com/esmydahab",
+          "https://www.instagram.com/esmydahab"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+201223043867",
+          "contactType": "customer service",
+          "areaServed": "EG",
+          "availableLanguage": "Arabic"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
           {
-            "@type": "Offer",
-            "name": "العرض الفردي المميز تيشيرت واحد بالاسم",
-            "price": "880",
-            "priceCurrency": "EGP",
-            "availability": "https://schema.org/InStock",
-            "url": "https://esmydahab.com"
+            "@type": "Question",
+            "name": "ما هي خامات تيشرتات إسمي ذهب؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "تيشرتات إسمي ذهب مصنوعة من قطن مصري 100% ثقيل للغاية، عالي الجودة ومريح، بقصة أوفرسايز (ون سايز) تناسب الجميع."
+            }
           },
           {
-            "@type": "Offer",
-            "name": "العرض الثنائي المشترك قطعتين باسمين مختلفين",
-            "price": "1550",
-            "priceCurrency": "EGP",
-            "availability": "https://schema.org/InStock",
-            "url": "https://esmydahab.com"
+            "@type": "Question",
+            "name": "هل التطريز والكتابة باللون الذهبي مقاومة للغسيل؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "نعم، نستخدم تقنيات طباعة وحفر DTF ملكية مذهبة عالية الدقة وخيوط متينة للغاية مقاومة للغسيل المتكرر والحرارة والكي."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "كيف يمكنني طلب تيشرت مخصص باسمي؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "يمكنك استخدام شريط البحث في الصفحة الرئيسية لكتابة اسمك باللغة العربية أو الإنجليزية واختيار تصميمك المذهب الفاخر، أو ملء استمارة الطلب المخصص وسنقوم بالتواصل معك لتأكيد التصميم والبدء الفوري."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "كم يستغرق الشحن والتوصيل لكتابة المحافظات؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "يتم تجهيز القطعة الفنية المخصصة باسمك بعناية تامة وشحنها عبر شحن سريع لتصلك في غضون 3 إلى 5 أيام عمل لكافة محافظات مصر والمجتمعات الفخمة."
+            }
           }
         ]
       }
-    }
+    ]
     </script>
   </head>
   <body class="bg-black text-white selection:bg-gold selection:text-black">

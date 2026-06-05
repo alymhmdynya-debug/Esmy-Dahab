@@ -272,6 +272,78 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleNavigation);
   }, []);
 
+  // Dynamic SEO Head Update for optimal Google Crawling
+  useEffect(() => {
+    let title = "إسمي ذهب | براند تيشرتات بالاسم مخصصة فخمة 👑 ESMY DAHAB";
+    let desc = "براند إسمي ذهب (ESMY DAHAB) لصناعة أرقى تيشيرتات الأوفرسايز بالاسم للشباب والبنات. تيشيرت وان سايز قطن مصري 100% ثقيل ومطرز باسمك بالخط العربي المذهب والتاج الفاخر.";
+    
+    const cleanPath = currentPath.substring(1).trim().toLowerCase();
+    const isReserved = ['admin', 'apps', 'api', 'assets', 'icons', 'public', ''].includes(cleanPath);
+    
+    if (!isReserved && publicProfile) {
+      title = `الملف الملكي لـ ${publicProfile.displayName || publicProfile.username} 👑 براند إسمي ذهب`;
+      desc = `تصفح الملف التعريفي الفاخر للأستاذ(ة) ${publicProfile.displayName || publicProfile.username} من عشاق الألبسة المذهبة لبراند إسمي ذهب. اطلب تيشيرت وان سايز أوفرسايز مطرز باسمك وكن في لوحة الصدارة.`;
+    } else if (currentPath === '/admin' || currentPath === '/admin/') {
+      title = "لوحة إدارة الأسياد | إسمي ذهب";
+    }
+    
+    document.title = title;
+    
+    // Update Meta Description
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.setAttribute('name', 'description');
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.setAttribute('content', desc);
+    
+    // Update Open Graph tags for rich previews
+    let ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', title);
+    let ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', desc);
+  }, [currentPath, publicProfile]);
+
+  // Dynamic URL Query-Param Search Loader for SEO & Google Sitelinks Compatibility
+  useEffect(() => {
+    const qParam = urlParams.get('search') || urlParams.get('q');
+    if (qParam && qParam.trim()) {
+      const qVal = qParam.trim();
+      setSearchQuery(qVal);
+      setSearchedName(qVal);
+      setIsSearching(true);
+      
+      const performUrlSearch = async () => {
+        try {
+          const q = query(
+            collection(db, 'designs'), 
+            where('searchTags', 'array-contains', qVal.toLowerCase())
+          );
+          const snap = await getDocs(q);
+          const fetched: Design[] = [];
+          snap.forEach(d => {
+            fetched.push({ id: d.id, ...d.data() } as Design);
+          });
+          setSearchResults(fetched);
+          setHasSearched(true);
+          
+          // Smooth scroll to search container to highlight findings
+          setTimeout(() => {
+            const el = document.getElementById('search-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 800);
+        } catch (err) {
+          console.error('[SEO Search Loader] Error performing parameterized search:', err);
+        } finally {
+          setIsSearching(false);
+        }
+      };
+      
+      performUrlSearch();
+    }
+  }, [urlParams]);
+
   // Fetch prices settings globally and trigger auto-seeding if empty
   useEffect(() => {
     async function initAndSeed() {
@@ -1882,13 +1954,105 @@ export default function App() {
           <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
             <Crown className="w-8 h-8 text-gold mx-auto" />
             <h5 className="font-bold text-xs">طباعة وحفر DTF ملكي</h5>
-            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-400 leading-relaxed">طباعة أو حفر DTF عالي الدقة مش بخيوط مقاوم للغسيل المتكرر والحرارة.</p>
+            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-405 text-zinc-400 leading-relaxed">طباعة أو حفر DTF عالي الدقة مش بخيوط مقاوم للغسيل المتكرر والحرارة.</p>
           </div>
 
           <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
             <Users className="w-8 h-8 text-gold mx-auto" />
             <h5 className="font-bold text-xs">بوابة VIP المخصصة</h5>
             <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-405 text-zinc-400 leading-relaxed">الملف التعريفي الملكي يعبر عن مدى تميزك بمشترياتك الحصرية.</p>
+          </div>
+        </section>
+
+        {/* NATIVE SEMANTIC SEO FAQ SECTION */}
+        <section id="faq-section" className="max-w-4xl mx-auto space-y-8 py-8 border-t border-zinc-900">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-1 bg-gold/15 border border-gold/20 px-3 py-1 rounded-full text-gold text-[10px] font-extrabold">
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>دليل تفاصيل الفخامة والمعلومات</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">الأسئلة الشائعة لبراند إسمي ذهب 👑</h3>
+            <p className="text-xs text-zinc-450 text-zinc-400 leading-relaxed">تفاصيل حصرية عن تيشرتات الأوفرسايز بالاسم، خامات القطن المصري والضمان الفضي</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+                <span className="flex items-center gap-2">
+                  <span className="text-gold text-sm">✦</span>
+                  <span>ما هي جودة خامات تيشرتات "إسمي ذهب"؟</span>
+                </span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+              </summary>
+              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+                جميع منتجاتنا تعتمد على <strong>القطن المصري 100%</strong> الطويل التيلة الفاخر وثقيل الوزن بوزن يتعدى الـ 280 جرام ليعطي ذلك المظهر الأوفرسايز (One Size Oversized) الأنيق والقصة الفخمة المريحة والمنسدلة بشكل ملكي وجذاب يناسب كافة الهيئات للشباب والبنات.
+              </p>
+            </details>
+
+            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+                <span className="flex items-center gap-2">
+                  <span className="text-gold text-sm">✦</span>
+                  <span>هل طباعة الاسم وتطريز التاج المذهب مقاومة للغسيل؟</span>
+                </span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+              </summary>
+              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+                نعم بكل فخر! نحن نستخدم أحدث خوارزميات وتقنيات <strong>الحفر الحراري والطباعة DTF الدقيقة ثلاثية الأبعاد</strong> مع خيوط نسيجية لامعة متراكبة مع البج المذهب والتاج الملكي. هذه الخامة مصنوعة بعناية لتقاوم التآكل والحرارة والكي والغسيل بمعدل استدامة مذهل.
+              </p>
+            </details>
+
+            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+                <span className="flex items-center gap-2">
+                  <span className="text-gold text-sm">✦</span>
+                  <span>مش لاقي اسمي.. كيف أصمم خط ذهبي مخصص باسمي؟</span>
+                </span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+              </summary>
+              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+                الأمر غاية في البساطة! إذا لم يكن اسمك مدرجاً في الكتالوج الجاهز، فقط اضغط على زر <strong>"لو عايز تصميم باسمك اضغط هنا"</strong> واملأ استمارة تخصيص الاسم بالدولة الخاصة بك (بالعربية أو الإنجليزية) وسيقوم فريق المصممين والخطاطين الملكي لدينا بتطريز وبرمجة خط مخصص لاسمك فوراً دون أي رسوم تصميم إضافية!
+              </p>
+            </details>
+
+            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+                <span className="flex items-center gap-2">
+                  <span className="text-gold text-sm">✦</span>
+                  <span>كم يستغرق تفصيل وتوصيل التيشيرت المذهب؟</span>
+                </span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+              </summary>
+              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+                لأننا نتعامل مع كل قطعة كجزء فني نادر، تتراوح عملية التفصيل والحياكة الخاصة والطباعة من 24 إلى 48 ساعة، ثم يتم تعبئتها بعناية راقية وتغليف ملكي فاخر، وتوصيلها وشحنها عبر <strong>بوابات الشحن السريع</strong> لكافة محافظات مصر والمجتمعات لتصلك في غضون 3 إلى 5 أيام عمل فقط.
+              </p>
+            </details>
+
+            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+                <span className="flex items-center gap-2">
+                  <span className="text-gold text-sm">✦</span>
+                  <span>ما هي بوابة VIP الملكية ومجتمع الأسياد المتصدرين؟</span>
+                </span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+              </summary>
+              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+                تعد <strong>بوابة VIP المخصصة</strong> مجتمعاً فريداً لعملاء البراند الحقيقيين. مع طلبيتك، ستحصل يدوياً على كود نفاذ تفعيلي ملكي (مثل ESM-VIP) يفتح لك حساباً رقمياً فخماً بالاسم والصورة الشخصية على موقعنا. يمكنك مشاركته وجمع ترشيحات وتصويتات من العائلة لترتقي درجات الصدارة وتثبت ملكيتك لأرقى براند ملابس بالاسم في مصر والعالم العربي!
+              </p>
+            </details>
+
+            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+                <span className="flex items-center gap-2">
+                  <span className="text-gold text-sm">✦</span>
+                  <span>ما هي سياسة الاسترجاع والضمان الملكية؟</span>
+                </span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+              </summary>
+              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+                في براند <strong>إسمي ذهب</strong>، نوفر ضماناً ملكياً حقيقياً مدته 14 يوماً كاملة لكامل حقوق العميل. إذا وجد أي عيب تصنيعي أو خطأ في تطريز خط الاسم المذهب من قبلنا، نتكفل بتبديل القطعة فوراً وإحضار قطعة جديدة تناسب هيبتك الفخمة دون تكبد أي مصاريف إضافية على الإطلاق.
+              </p>
+            </details>
           </div>
         </section>
 
