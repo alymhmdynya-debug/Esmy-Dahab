@@ -1152,7 +1152,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           {/* Logo element */}
           <div className="flex items-center gap-2">
-            <Crown className="w-7 h-7 text-gold gold-glow animate-bounce" />
+            <Crown className="w-7 h-7 text-gold gold-glow" />
             <h1 className="font-serif font-black tracking-wider text-md sm:text-lg gold-gradient">ESM • إسمي ذهب</h1>
           </div>
 
@@ -1525,7 +1525,7 @@ export default function App() {
                         <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Crown className="w-4 h-4 text-black animate-pulse" />
+                        <Crown className="w-4 h-4 text-black" />
                           <span>تأكيد طلب التفصيل الملكي المخصوص</span>
                         </>
                       )}
