@@ -22,6 +22,7 @@ export interface ConfigApp {
   stage3IconUrl?: string;
   telegramBotToken?: string;
   telegramChatId?: string;
+  telegramGasUrl?: string;
 }
 
 export interface Design {
@@ -31,6 +32,8 @@ export interface Design {
   images?: string[]; // Multiple images support (one or more)
   isCustom?: boolean; // True: الملابس المخصوصة (On Demand), False/Undefined: الملابس العادية (Regular Clothes)
   availableSizes?: string[]; // Available sizes list (e.g., ["M", "L", "XL", "XXL"])
+  availableColors?: string[]; // Available colors list (e.g., ["Black", "White"])
+  imageColors?: string[]; // Matching color labels for each image in the images array
   searchTags: string[];
   whatsappMessage: string;
   createdAt: any; // Firestore Timestamp or serverTimestamp
@@ -74,6 +77,7 @@ export interface Order {
   altPhone?: string; // Optional phone number for delivery calls
   address?: string;   // Shipping address
   size?: string;      // Chosen size (e.g. M, L, XL, XXL)
+  color?: string;     // Chosen color
   fabric: 'Classic' | 'Premium';
   notes: string;
   designId?: string | null;

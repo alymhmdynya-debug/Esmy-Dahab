@@ -153,6 +153,7 @@ export default function App() {
   const [checkoutAltPhone, setCheckoutAltPhone] = useState<string>('');
   const [checkoutAddress, setCheckoutAddress] = useState<string>('');
   const [checkoutSize, setCheckoutSize] = useState<string>('');
+  const [checkoutColor, setCheckoutColor] = useState<string>('');
   const [checkoutNotes, setCheckoutNotes] = useState<string>('');
   const [checkoutSubmitting, setCheckoutSubmitting] = useState<boolean>(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState<boolean>(false);
@@ -190,6 +191,7 @@ export default function App() {
         altPhone: checkoutAltPhone.trim(),
         address: checkoutAddress.trim(),
         size: checkoutSize,
+        color: checkoutColor || '',
         fabric: finalFabric as any,
         notes: checkoutNotes.trim() || `أوردر فخم مباشر لـ ${checkoutProduct.name}`,
         designId: checkoutProduct.id,
@@ -207,6 +209,7 @@ export default function App() {
         `📞 <b>هاتف بديل (اختياري):</b> ${checkoutAltPhone.trim() || 'لا يوجد'}\n` +
         `📍 <b>العنوان بالتفصيل:</b> ${checkoutAddress.trim()}\n` +
         `📏 <b>المقاس:</b> <code>${checkoutSize}</code>\n` +
+        `🎨 <b>اللون المختار:</b> <code>${checkoutColor || 'غير محدد'}</code>\n` +
         `👕 <b>نوع وخيار المنتج:</b> ${checkoutProduct.name}\n` +
         `🛑 <b>ملاحظات إضافية:</b> ${checkoutNotes.trim() || 'لا يوجد'}\n` +
         `🆔 <b>كود الأوردر:</b> <code>${orderId}</code>`;
@@ -835,9 +838,37 @@ export default function App() {
     }
   };
 
-  // Send notifications of new orders to private Telegram Channel/User
+  // Send notifications of new orders to private Telegram Channel/User / GAS Webhook
   const sendTelegramNotification = async (order: Order, whatsappMessageText: string) => {
     try {
+      // 1. Google Apps Script Webhook integration if configured
+      if (configApp.telegramGasUrl && configApp.telegramGasUrl.startsWith('http')) {
+        console.log('[GAS API] Dispatched notification payload to Webhook...');
+        try {
+          await fetch(configApp.telegramGasUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: order.id,
+              name: order.name,
+              phone: order.phone,
+              fabric: order.fabric || '',
+              size: order.size || '',
+              color: order.color || '',
+              notes: order.notes || '',
+              designId: order.designId || '',
+              whatsappMessageText: whatsappMessageText,
+              timestamp: new Date().toISOString()
+            })
+          });
+          console.log('[GAS API] Payload sent successfully.');
+        } catch (gasErr) {
+          console.error('[GAS API] Webhook dispatch error:', gasErr);
+        }
+      }
+
+      // 2. Direct Telegram Bot API fallback
       const token = configApp.telegramBotToken;
       const chatId = configApp.telegramChatId;
       if (!token || !chatId || token.includes('fake') || chatId.includes('fake')) {
@@ -1799,15 +1830,6 @@ export default function App() {
                       )}
                       
                       <div className="space-y-3">
-                        <div className="h-40 bg-stone-50/60 p-3 rounded-xl flex items-center justify-center border border-stone-100 relative overflow-hidden max-w-[200px] mx-auto">
-                          <img 
-                            src={pkg.imageUrl} 
-                            alt={pkg.name} 
-                            className="h-full object-contain" 
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-
                         <div className="text-center space-y-1">
                           <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">
                             {pkg.sub}
@@ -1832,6 +1854,7 @@ export default function App() {
                           setCheckoutAltPhone('');
                           setCheckoutAddress('');
                           setCheckoutSize(pkg.availableSizes[1] || 'L');
+                          setCheckoutColor('أسود');
                           setCheckoutNotes('');
                         }}
                         className={`w-full py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
@@ -1902,6 +1925,7 @@ export default function App() {
                             setCheckoutAltPhone('');
                             setCheckoutAddress('');
                             setCheckoutSize(sizesToUse[1] || 'L');
+                            setCheckoutColor(design.availableColors?.[0] || 'أسود');
                             setCheckoutNotes('');
                           }}
                           className="w-full py-2 bg-[#B89753] hover:opacity-95 text-white font-black text-[10px] rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1"
@@ -1976,6 +2000,7 @@ export default function App() {
                           setCheckoutAltPhone('');
                           setCheckoutAddress('');
                           setCheckoutSize(sizesToUse[1] || 'L');
+                          setCheckoutColor(design.availableColors?.[0] || 'أسود');
                           setCheckoutNotes('');
                         }}
                         className="w-full py-2 bg-zinc-950 hover:bg-stone-900 text-white font-bold text-[10px] rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1"
@@ -2398,6 +2423,23 @@ export default function App() {
                     {checkoutProduct.price && (
                       <p className="text-xs text-gold font-bold">المبلغ للامتلاك: {checkoutProduct.price} ج.م</p>
                     )}
+                    
+                    {/* PRODUCT PREVIEW WITH COLOR SWITCHED IMAGE */}
+                    {(() => {
+                      let displayImage = checkoutProduct.imageUrl || '';
+                      if (checkoutProduct.images && checkoutProduct.imageColors && checkoutColor) {
+                        const colorIndex = checkoutProduct.imageColors.findIndex((c: string) => c === checkoutColor);
+                        if (colorIndex !== -1 && checkoutProduct.images[colorIndex]) {
+                          displayImage = checkoutProduct.images[colorIndex];
+                        }
+                      }
+                      if (!displayImage) return null;
+                      return (
+                        <div className="mt-3 flex justify-center bg-stone-50 border border-stone-100 rounded-2xl p-2 max-w-[140px] mx-auto aspect-square overflow-hidden shadow-sm relative">
+                          <img src={displayImage} alt={checkoutProduct.name} className="h-full object-contain" referrerPolicy="no-referrer" />
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* CUSTOMER NAME */}
@@ -2485,6 +2527,42 @@ export default function App() {
                     <p className="text-[9px] text-stone-400 text-right mt-1 font-sans">
                       * يرجى العلم بأنك تتحمل المسؤولية الكاملة عن اختيار المقاس، وننصح بطلب مقاسك المعتاد.
                     </p>
+                  </div>
+
+                  {/* COLORS RADIOS ROW */}
+                  <div className="space-y-2">
+                    <label className="block text-stone-700 font-bold text-[10px] mr-1 text-right font-sans">
+                      اختر اللون المتاح للموديل 🎨
+                    </label>
+                    <div className="flex flex-wrap gap-2 justify-start md:justify-end">
+                      {(checkoutProduct.availableColors && checkoutProduct.availableColors.length > 0
+                        ? checkoutProduct.availableColors
+                        : ['أسود', 'أبيض']
+                      ).map((col: string) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => setCheckoutColor(col)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+                            checkoutColor === col
+                              ? 'bg-[#B89753] text-white border-gold shadow-md'
+                              : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full inline-block ${
+                            col === 'أسود' ? 'bg-black' :
+                            col === 'أبيض' ? 'bg-white border border-stone-300' :
+                            col === 'أحمر' ? 'bg-red-500' :
+                            col === 'أزرق' ? 'bg-blue-500' :
+                            col === 'أخضر' ? 'bg-emerald-600' :
+                            col === 'كحلي' ? 'bg-blue-900' :
+                            col === 'رمادي' ? 'bg-gray-400' :
+                            'bg-[#B89753]'
+                          }`} />
+                          <span>{col}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* ADDITIONAL NOTES */}

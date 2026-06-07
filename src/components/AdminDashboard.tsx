@@ -51,7 +51,8 @@ export default function AdminDashboard() {
     stage2IconUrl: '/icons/stage2.png',
     stage3IconUrl: '/icons/stage3.png',
     telegramBotToken: '',
-    telegramChatId: ''
+    telegramChatId: '',
+    telegramGasUrl: ''
   });
   const [savingPrices, setSavingPrices] = useState<boolean>(false);
   const [uploadingStage1, setUploadingStage1] = useState<boolean>(false);
@@ -77,8 +78,11 @@ export default function AdminDashboard() {
   
   // New customized design fields
   const [designIsCustom, setDesignIsCustom] = useState<boolean>(true);
-  const [designAvailableSizes, setDesignAvailableSizes] = useState<string[]>(['M', 'L', 'XL', 'XXL']);
+  const [designAvailableSizes, setDesignAvailableSizes] = useState<string[]>(['L', 'XL']);
+  const [designAvailableColors, setDesignAvailableColors] = useState<string[]>(['أسود', 'أبيض']);
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+  const [additionalImageColors, setAdditionalImageColors] = useState<string[]>([]);
+  const [mainImageColor, setMainImageColor] = useState<string>('أسود');
   const [uploadingAdditionalFile, setUploadingAdditionalFile] = useState<boolean>(false);
 
   // Access Codes Inputs
@@ -149,7 +153,8 @@ export default function AdminDashboard() {
             stage2IconUrl: data.stage2IconUrl ?? '/icons/stage2.png',
             stage3IconUrl: data.stage3IconUrl ?? '/icons/stage3.png',
             telegramBotToken: data.telegramBotToken ?? '',
-            telegramChatId: data.telegramChatId ?? ''
+            telegramChatId: data.telegramChatId ?? '',
+            telegramGasUrl: data.telegramGasUrl ?? ''
           });
         } else {
           // Initialize if absent
@@ -280,12 +285,24 @@ export default function AdminDashboard() {
       // Create a unique clean array of all images
       const allProductImages = [finalUrl, ...additionalImages].filter((value, index, self) => self.indexOf(value) === index && value !== '');
 
+      // Create parallel imageColors array
+      const allProductImageColors = allProductImages.map((img) => {
+        if (img === finalUrl) return mainImageColor;
+        const addIdx = additionalImages.indexOf(img);
+        if (addIdx !== -1) {
+          return additionalImageColors[addIdx] || '';
+        }
+        return '';
+      });
+
       const designPayload = {
         name: designName,
         imageUrl: finalUrl,
         images: allProductImages,
+        imageColors: allProductImageColors,
         isCustom: designIsCustom,
         availableSizes: designAvailableSizes,
+        availableColors: designAvailableColors,
         searchTags: tagsList,
         whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت بتصميم: ${designName}`,
         showOnHome: designShowOnHome
@@ -313,8 +330,11 @@ export default function AdminDashboard() {
       setDesignWhatsapp('');
       setDesignShowOnHome(true);
       setDesignIsCustom(true);
-      setDesignAvailableSizes(['M', 'L', 'XL', 'XXL']);
+      setDesignAvailableSizes(['L', 'XL']);
+      setDesignAvailableColors(['أسود', 'أبيض']);
       setAdditionalImages([]);
+      setAdditionalImageColors([]);
+      setMainImageColor('أسود');
       setEditingDesignId(null);
       setExistingImageUrl('');
     } catch (err) {
@@ -336,11 +356,30 @@ export default function AdminDashboard() {
     
     // Set custom design states
     setDesignIsCustom(design.isCustom !== false);
-    setDesignAvailableSizes(design.availableSizes || ['M', 'L', 'XL', 'XXL']);
+    setDesignAvailableSizes(design.availableSizes || ['L', 'XL']);
+    setDesignAvailableColors(design.availableColors || ['أسود', 'أبيض']);
     
-    // In images, filter out the main imageUrl to avoid duplication in additional images state
-    const filteredImages = (design.images || []).filter(img => img !== design.imageUrl && img !== '');
+    // Parse images and imageColors
+    const imgs = design.images || [];
+    const colors = design.imageColors || [];
+    const mainIdx = imgs.indexOf(design.imageUrl);
+    let mainColor = 'أسود';
+    if (mainIdx !== -1) {
+      mainColor = colors[mainIdx] || 'أسود';
+    }
+    setMainImageColor(mainColor);
+
+    // Filter additional images & colors
+    const filteredImages: string[] = [];
+    const filteredColors: string[] = [];
+    imgs.forEach((img, idx) => {
+      if (img !== design.imageUrl && img !== '') {
+        filteredImages.push(img);
+        filteredColors.push(colors[idx] || '');
+      }
+    });
     setAdditionalImages(filteredImages);
+    setAdditionalImageColors(filteredColors);
     
     const target = document.getElementById('design-form-top');
     target?.scrollIntoView({ behavior: 'smooth' });
@@ -354,8 +393,11 @@ export default function AdminDashboard() {
     setDesignWhatsapp('');
     setDesignShowOnHome(true);
     setDesignIsCustom(true);
-    setDesignAvailableSizes(['M', 'L', 'XL', 'XXL']);
+    setDesignAvailableSizes(['L', 'XL']);
+    setDesignAvailableColors(['أسود', 'أبيض']);
     setAdditionalImages([]);
+    setAdditionalImageColors([]);
+    setMainImageColor('أسود');
     setEditingDesignId(null);
     setExistingImageUrl('');
   };
@@ -962,6 +1004,19 @@ export default function AdminDashboard() {
                       </select>
                     </div>
 
+                    {/* MAIN IMAGE COLOR */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-1">لون الصورة الأساسية الرئسية 🎨</label>
+                      <input
+                        type="text"
+                        required
+                        value={mainImageColor}
+                        onChange={(e) => setMainImageColor(e.target.value)}
+                        placeholder="مثال: أسود"
+                        className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs font-bold focus:outline-none focus:border-gold text-right"
+                      />
+                    </div>
+
                     {/* SIZES CHECKBOXES */}
                     <div>
                       <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">المقاسات المتاحة لهذا المنتج</label>
@@ -989,9 +1044,34 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
+                    {/* COLORS CONFIGURATION TEXT INPUT */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">الألوان المتاحة لهذا المنتج 🎨</label>
+                      <div className="space-y-2 bg-zinc-950/40 p-3 rounded-lg border border-zinc-900">
+                        <input
+                          type="text"
+                          required
+                          value={designAvailableColors.join('، ')}
+                          onChange={(e) => {
+                            const colors = e.target.value.split(/[،,]/).map(c => c.trim()).filter(c => c.length > 0);
+                            setDesignAvailableColors(colors);
+                          }}
+                          placeholder="مثال: أسود، أبيض، كحلي، أخضر (افصل بفاصلة أو فاصلة عربية)"
+                          className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-805 text-white rounded text-xs text-right font-sans focus:outline-none focus:border-gold"
+                        />
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {designAvailableColors.map((col, i) => (
+                            <span key={i} className="text-[10px] bg-zinc-800 text-gold px-2 py-0.5 rounded-full font-bold">
+                              {col}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* ADD MULTIPLE IMAGES */}
                     <div>
-                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">صور إضافية للمنتج (في حال وجود أكثر من صورة)</label>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">صور إضافية للمنتج (اربط كل صورة بلون محدد)</label>
                       <div className="space-y-2">
                         <div className="flex gap-2">
                           <div className="relative flex-grow">
@@ -1006,6 +1086,7 @@ export default function AdminDashboard() {
                                   try {
                                     const url = await uploadToImgBB(file);
                                     setAdditionalImages([...additionalImages, url]);
+                                    setAdditionalImageColors([...additionalImageColors, designAvailableColors[0] || '']);
                                     alert('تم رفع الصورة الإضافية بنجاح لمجموعة المعرض!');
                                   } catch (err) {
                                     console.error(err);
@@ -1035,22 +1116,48 @@ export default function AdminDashboard() {
                         </div>
 
                         {additionalImages.length > 0 && (
-                          <div className="grid grid-cols-4 gap-2 bg-zinc-950/20 p-2 rounded-lg border border-zinc-900/60">
-                            {additionalImages.map((imgUrl, idx) => (
-                              <div key={idx} className="relative aspect-square border border-zinc-800 rounded overflow-hidden bg-black flex items-center justify-center">
-                                <img src={imgUrl} alt={`Additional ${idx}`} className="h-full object-contain" referrerPolicy="no-referrer" />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setAdditionalImages(additionalImages.filter((_, i) => i !== idx));
-                                  }}
-                                  className="absolute -top-1 -right-1 bg-red-600 hover:bg-red-750 text-white text-[9px] p-1 rounded-full cursor-pointer shadow flex items-center justify-center w-4 h-4"
-                                  title="إزالة هذه الصورة"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
+                          <div className="space-y-2">
+                            <span className="text-[10px] text-zinc-400 block text-right font-bold font-sans">اربط كل صورة إضافية بلونها المتاح:</span>
+                            <div className="grid grid-cols-2 gap-3 bg-zinc-950/20 p-2 rounded-lg border border-zinc-900/60 font-sans">
+                              {additionalImages.map((imgUrl, idx) => {
+                                const imgColor = additionalImageColors[idx] || '';
+                                return (
+                                  <div key={idx} className="relative border border-zinc-850 border-zinc-800 rounded-lg p-2 bg-zinc-950 flex flex-col items-center gap-2">
+                                    <div className="w-full h-24 overflow-hidden rounded bg-black flex items-center justify-center relative">
+                                      <img src={imgUrl} alt={`Additional ${idx}`} className="h-full object-contain" referrerPolicy="no-referrer" />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setAdditionalImages(additionalImages.filter((_, i) => i !== idx));
+                                          setAdditionalImageColors(additionalImageColors.filter((_, i) => i !== idx));
+                                        }}
+                                        className="absolute top-1 left-1 bg-red-600 hover:bg-red-700 text-white text-[11px] p-1 rounded-full cursor-pointer shadow flex items-center justify-center w-5 h-5 font-bold"
+                                        title="إزالة هذه الصورة"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                    <div className="w-full space-y-1">
+                                      <span className="text-[9px] text-zinc-400 block text-right">اللون المرتبط:</span>
+                                      <select
+                                        value={imgColor}
+                                        onChange={(e) => {
+                                          const updatedColors = [...additionalImageColors];
+                                          updatedColors[idx] = e.target.value;
+                                          setAdditionalImageColors(updatedColors);
+                                        }}
+                                        className="w-full bg-zinc-900 border border-zinc-800 text-white text-[10px] rounded p-1 focus:outline-none focus:border-gold text-right"
+                                      >
+                                        <option value="">-- اختر لوناً --</option>
+                                        {designAvailableColors.map((col) => (
+                                          <option key={col} value={col}>{col}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1358,6 +1465,17 @@ export default function AdminDashboard() {
                         value={prices.telegramChatId || ''}
                         onChange={(e) => setPrices({ ...prices, telegramChatId: e.target.value })}
                         placeholder="مثال: 987654321"
+                        className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none"
+                        style={{ direction: 'ltr' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 text-[11px] font-semibold mb-1 font-sans text-right">رابط Google Apps Script Webhook لطلب الإشعارات (بديل بوت التيليغرام)</label>
+                      <input
+                        type="text"
+                        value={prices.telegramGasUrl || ''}
+                        onChange={(e) => setPrices({ ...prices, telegramGasUrl: e.target.value })}
+                        placeholder="https://script.google.com/macros/s/AKfycb.../exec"
                         className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none"
                         style={{ direction: 'ltr' }}
                       />
