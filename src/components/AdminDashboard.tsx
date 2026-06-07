@@ -49,7 +49,9 @@ export default function AdminDashboard() {
     vipAppUrl: DEFAULT_VIP_APP_URL,
     stage1IconUrl: '/icons/stage1.png',
     stage2IconUrl: '/icons/stage2.png',
-    stage3IconUrl: '/icons/stage3.png'
+    stage3IconUrl: '/icons/stage3.png',
+    telegramBotToken: '',
+    telegramChatId: ''
   });
   const [savingPrices, setSavingPrices] = useState<boolean>(false);
   const [uploadingStage1, setUploadingStage1] = useState<boolean>(false);
@@ -72,6 +74,12 @@ export default function AdminDashboard() {
   const [designShowOnHome, setDesignShowOnHome] = useState<boolean>(true);
   const [editingDesignId, setEditingDesignId] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string>('');
+  
+  // New customized design fields
+  const [designIsCustom, setDesignIsCustom] = useState<boolean>(true);
+  const [designAvailableSizes, setDesignAvailableSizes] = useState<string[]>(['M', 'L', 'XL', 'XXL']);
+  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+  const [uploadingAdditionalFile, setUploadingAdditionalFile] = useState<boolean>(false);
 
   // Access Codes Inputs
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -118,8 +126,8 @@ export default function AdminDashboard() {
         const docRef = doc(db, 'config', 'app');
         const snap = await getDoc(docRef);
         const defaultTypes = [
-          { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
-          { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+          { id: 'premium', name: 'تيشرت بريميوم مذهب فخم (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+          { id: 'classic', name: 'تيشرت كلاسيك بالاسم (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
           { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
         ];
 
@@ -139,7 +147,9 @@ export default function AdminDashboard() {
             vipAppUrl: data.vipAppUrl ?? DEFAULT_VIP_APP_URL,
             stage1IconUrl: data.stage1IconUrl ?? '/icons/stage1.png',
             stage2IconUrl: data.stage2IconUrl ?? '/icons/stage2.png',
-            stage3IconUrl: data.stage3IconUrl ?? '/icons/stage3.png'
+            stage3IconUrl: data.stage3IconUrl ?? '/icons/stage3.png',
+            telegramBotToken: data.telegramBotToken ?? '',
+            telegramChatId: data.telegramChatId ?? ''
           });
         } else {
           // Initialize if absent
@@ -243,7 +253,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Upload/Create Custom Designs
   // Upload/Create or Update Custom Designs
   const handleCreateOrUpdateDesign = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,24 +277,28 @@ export default function AdminDashboard() {
         tagsList.push(designName.toLowerCase());
       }
 
+      // Create a unique clean array of all images
+      const allProductImages = [finalUrl, ...additionalImages].filter((value, index, self) => self.indexOf(value) === index && value !== '');
+
+      const designPayload = {
+        name: designName,
+        imageUrl: finalUrl,
+        images: allProductImages,
+        isCustom: designIsCustom,
+        availableSizes: designAvailableSizes,
+        searchTags: tagsList,
+        whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت بتصميم: ${designName}`,
+        showOnHome: designShowOnHome
+      };
+
       if (editingDesignId) {
-        await updateDoc(doc(db, 'designs', editingDesignId), {
-          name: designName,
-          imageUrl: finalUrl,
-          searchTags: tagsList,
-          whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت بتصميم: ${designName}`,
-          showOnHome: designShowOnHome
-        });
+        await updateDoc(doc(db, 'designs', editingDesignId), designPayload);
         alert('تم تعديل وحفظ التصميم بنجاح واعتمدنا التغييرات الفاخرة!');
       } else {
         const designId = doc(collection(db, 'designs')).id;
         const newDesign: Design = {
           id: designId,
-          name: designName,
-          imageUrl: finalUrl,
-          searchTags: tagsList,
-          whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت بتصميم: ${designName}`,
-          showOnHome: designShowOnHome,
+          ...designPayload,
           createdAt: serverTimestamp()
         };
         await setDoc(doc(db, 'designs', designId), newDesign);
@@ -299,6 +312,9 @@ export default function AdminDashboard() {
       setDesignTags('');
       setDesignWhatsapp('');
       setDesignShowOnHome(true);
+      setDesignIsCustom(true);
+      setDesignAvailableSizes(['M', 'L', 'XL', 'XXL']);
+      setAdditionalImages([]);
       setEditingDesignId(null);
       setExistingImageUrl('');
     } catch (err) {
@@ -318,6 +334,14 @@ export default function AdminDashboard() {
     setExistingImageUrl(design.imageUrl);
     setDesignPreview(design.imageUrl);
     
+    // Set custom design states
+    setDesignIsCustom(design.isCustom !== false);
+    setDesignAvailableSizes(design.availableSizes || ['M', 'L', 'XL', 'XXL']);
+    
+    // In images, filter out the main imageUrl to avoid duplication in additional images state
+    const filteredImages = (design.images || []).filter(img => img !== design.imageUrl && img !== '');
+    setAdditionalImages(filteredImages);
+    
     const target = document.getElementById('design-form-top');
     target?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -329,6 +353,9 @@ export default function AdminDashboard() {
     setDesignTags('');
     setDesignWhatsapp('');
     setDesignShowOnHome(true);
+    setDesignIsCustom(true);
+    setDesignAvailableSizes(['M', 'L', 'XL', 'XXL']);
+    setAdditionalImages([]);
     setEditingDesignId(null);
     setExistingImageUrl('');
   };
@@ -922,6 +949,113 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
+                    {/* CATEGORY SELECT */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">تصنيف قطعة الملابس</label>
+                      <select
+                        value={designIsCustom ? 'custom' : 'regular'}
+                        onChange={(e) => setDesignIsCustom(e.target.value === 'custom')}
+                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold font-bold text-right"
+                      >
+                        <option value="custom">الملابس المخصوصة (طباعة On Demand بالاسم الذهب)</option>
+                        <option value="regular">الملابس العادية (تصاميم ونقوش جاهزة)</option>
+                      </select>
+                    </div>
+
+                    {/* SIZES CHECKBOXES */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">المقاسات المتاحة لهذا المنتج</label>
+                      <div className="grid grid-cols-3 gap-2 bg-zinc-950/40 p-3 rounded-lg border border-zinc-900">
+                        {['S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map((size) => {
+                          const isChecked = designAvailableSizes.includes(size);
+                          return (
+                            <label key={size} className="flex items-center gap-1.5 justify-end text-xs text-zinc-300 font-bold select-none cursor-pointer">
+                              <span>{size}</span>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  if (isChecked) {
+                                    setDesignAvailableSizes(designAvailableSizes.filter(s => s !== size));
+                                  } else {
+                                    setDesignAvailableSizes([...designAvailableSizes, size]);
+                                  }
+                                }}
+                                className="w-4 h-4 accent-gold cursor-pointer"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* ADD MULTIPLE IMAGES */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">صور إضافية للمنتج (في حال وجود أكثر من صورة)</label>
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <div className="relative flex-grow">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingAdditionalFile}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setUploadingAdditionalFile(true);
+                                  try {
+                                    const url = await uploadToImgBB(file);
+                                    setAdditionalImages([...additionalImages, url]);
+                                    alert('تم رفع الصورة الإضافية بنجاح لمجموعة المعرض!');
+                                  } catch (err) {
+                                    console.error(err);
+                                    alert('فشل رفع الصورة الإضافية، تأكد من اتصالك بنظام ImgBB.');
+                                  } finally {
+                                    setUploadingAdditionalFile(false);
+                                  }
+                                }
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            />
+                            <button
+                              type="button"
+                              disabled={uploadingAdditionalFile}
+                              className="w-full py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg hover:border-gold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              {uploadingAdditionalFile ? (
+                                <div className="w-4 h-4 border-2 border-zinc-300 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4 text-gold" />
+                                  <span>رفع صورة إضافية جديدة</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {additionalImages.length > 0 && (
+                          <div className="grid grid-cols-4 gap-2 bg-zinc-950/20 p-2 rounded-lg border border-zinc-900/60">
+                            {additionalImages.map((imgUrl, idx) => (
+                              <div key={idx} className="relative aspect-square border border-zinc-800 rounded overflow-hidden bg-black flex items-center justify-center">
+                                <img src={imgUrl} alt={`Additional ${idx}`} className="h-full object-contain" referrerPolicy="no-referrer" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAdditionalImages(additionalImages.filter((_, i) => i !== idx));
+                                  }}
+                                  className="absolute -top-1 -right-1 bg-red-600 hover:bg-red-750 text-white text-[9px] p-1 rounded-full cursor-pointer shadow flex items-center justify-center w-4 h-4"
+                                  title="إزالة هذه الصورة"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-zinc-400 text-[10px] font-semibold mb-2">الوسوم والكلمات الدلالية للبحث (مفصولة بفاصلة)</label>
                       <input
@@ -1193,6 +1327,49 @@ export default function AdminDashboard() {
                   <span className="text-[10px] text-zinc-500 mt-1 block text-right">
                     الرابط المعتمد لبوبة VIP المخصصة لتسجيل والتحكم بحسابات الأعضاء. اسم الحقل في Firestore: <strong className="text-gold font-mono">vipAppUrl</strong>
                   </span>
+                </div>
+
+                {/* TELEGRAM BOT INTEGRATION */}
+                <div className="border border-gold/20 p-4 rounded-xl bg-zinc-950/40 space-y-4 text-right">
+                  <h4 className="text-xs font-bold text-gold flex items-center justify-between">
+                    <span className="text-[9px] text-amber-500 font-bold">تطوير فوري وآمن 🤖</span>
+                    <span>🔔 إعدادات بوت التليجرام لإرسال الطلبات فورا</span>
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed">
+                    عندما يقوم أي عميل بطلب تيشيرت (سواء اسم محدد أو كاستم)، سيقوم السيرفر/البرنامج تلقائياً بإخطار البوت وإرسال تفاصيل الزبون الكاملة إلى التليجرام الخاص بك حتى تتمكن من التواصل معه بسهولة مطلقة!
+                  </p>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-zinc-400 text-[11px] font-semibold mb-1">توكن البوت (Telegram Bot Token)</label>
+                      <input
+                        type="text"
+                        value={prices.telegramBotToken || ''}
+                        onChange={(e) => setPrices({ ...prices, telegramBotToken: e.target.value })}
+                        placeholder="مثال: 123456789:AAFGfakeTokenStringHere"
+                        className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none"
+                        style={{ direction: 'ltr' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 text-[11px] font-semibold mb-1">الرقم التعريفي للمحادثة (Telegram Chat ID / User ID)</label>
+                      <input
+                        type="text"
+                        value={prices.telegramChatId || ''}
+                        onChange={(e) => setPrices({ ...prices, telegramChatId: e.target.value })}
+                        placeholder="مثال: 987654321"
+                        className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none"
+                        style={{ direction: 'ltr' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-red-950/20 border border-red-900/30 rounded-xl space-y-1">
+                    <div className="text-[10px] text-red-400 font-black">⚠️ تحذير أمني هام (Security Advisory):</div>
+                    <p className="text-[9px] text-zinc-400 leading-relaxed">
+                      هذا الاتصال بالتيليجرام يتم من واجهة المستخدم مباشرة بناءً على طلبكم تسهيلاً للتجرية الفورية. يرجى الملاحظة أن وضع توكن البوت الحقيقي سيجعله محملاً في المتصفح في حال قام أحد بفحص الكود، مما قد يعرض توكن البوت للكشف. نوصي بعدم منح البوت أي صلاحيات حساسة في قنوات أخرى واقتصاره فقط على إرسال الإشعارات الصادرة لك.
+                    </p>
+                  </div>
                 </div>
 
                 {/* STAGE ICONS CONFIGURATION */}

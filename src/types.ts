@@ -20,12 +20,17 @@ export interface ConfigApp {
   stage1IconUrl?: string;
   stage2IconUrl?: string;
   stage3IconUrl?: string;
+  telegramBotToken?: string;
+  telegramChatId?: string;
 }
 
 export interface Design {
   id: string;
   name: string;
   imageUrl: string;
+  images?: string[]; // Multiple images support (one or more)
+  isCustom?: boolean; // True: الملابس المخصوصة (On Demand), False/Undefined: الملابس العادية (Regular Clothes)
+  availableSizes?: string[]; // Available sizes list (e.g., ["M", "L", "XL", "XXL"])
   searchTags: string[];
   whatsappMessage: string;
   createdAt: any; // Firestore Timestamp or serverTimestamp
@@ -66,6 +71,9 @@ export interface Order {
   id: string;
   name: string;
   phone: string;
+  altPhone?: string; // Optional phone number for delivery calls
+  address?: string;   // Shipping address
+  size?: string;      // Chosen size (e.g. M, L, XL, XXL)
   fabric: 'Classic' | 'Premium';
   notes: string;
   designId?: string | null;

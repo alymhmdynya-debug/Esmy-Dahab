@@ -14,7 +14,7 @@ import ReturnPolicy from './components/ReturnPolicy';
 import { updatePwaAssets } from './lib/pwa';
 import { DEFAULT_WEARABLE_APP_URL, DEFAULT_VIP_APP_URL } from './config';
 import { 
-  Crown, Search, ShoppingBag, Shield, Sparkles, Check, Gift, Heart, Send, 
+  X, Plus, Crown, Search, ShoppingBag, Shield, Sparkles, Check, Gift, Heart, Send, 
   Users, UploadCloud, ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, HelpCircle, Copy, MessageSquare, Share2, Award
 } from 'lucide-react';
 
@@ -65,11 +65,11 @@ export default function App() {
   // App Config and Prices
   const [configApp, setConfigApp] = useState<ConfigApp>({
     classicPrice: 499,
-    classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• طباعة وحفر DTF مذهب عالي الدقة بالاسم",
+    classicDescription: "تيشرت وان سايز أوفرسايز بخامات مريحة وفخمة\n• جودة أقمشة حلوة وممتازة للغاية\n• طباعة وتطريز مذهب عالي الدقة بالاسم الكلاسيكي",
     duoPrice: 899,
-    duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
+    duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين بخامات ممتازة واسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
     premiumPrice: 880,
-    premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+    premiumDescription: "باقة بريميوم - النسخة الملكية الأقوى\n• حفر وطباعة بالاسم مع تصميم التاج الملكي الفاخر\n• خامات مريحة ومقاومة للغسيل مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
     whatsappNumber: '201223043867',
     focusedProduct: 'premium',
     wearableAppUrl: DEFAULT_WEARABLE_APP_URL,
@@ -145,6 +145,81 @@ export default function App() {
 
   // Policy Modal
   const [isPolicyOpen, setIsPolicyOpen] = useState<boolean>(false);
+
+  // Unified Checkout Modal states
+  const [checkoutProduct, setCheckoutProduct] = useState<any | null>(null); // holds Design or package
+  const [checkoutName, setCheckoutName] = useState<string>('');
+  const [checkoutPhone, setCheckoutPhone] = useState<string>('');
+  const [checkoutAltPhone, setCheckoutAltPhone] = useState<string>('');
+  const [checkoutAddress, setCheckoutAddress] = useState<string>('');
+  const [checkoutSize, setCheckoutSize] = useState<string>('');
+  const [checkoutNotes, setCheckoutNotes] = useState<string>('');
+  const [checkoutSubmitting, setCheckoutSubmitting] = useState<boolean>(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState<boolean>(false);
+
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkoutProduct) return;
+    if (!checkoutName.trim()) {
+      alert('يرجى كتابة الاسم بالكامل للتسجيل الفاخر للطلب!');
+      return;
+    }
+    if (!checkoutPhone.trim()) {
+      alert('يرجى ملء رقم الواتساب!');
+      return;
+    }
+    if (!checkoutAddress.trim()) {
+      alert('يرجى ملء عنوان التوصيل بالتفصيل لتجنب تأخر الشحنة!');
+      return;
+    }
+    if (!checkoutSize) {
+      alert('يرجى اختيار مقاس من المقاسات المتاحة للطلب!');
+      return;
+    }
+
+    setCheckoutSubmitting(true);
+    try {
+      const orderId = doc(collection(db, 'orders')).id;
+      const isCustomProduct = checkoutProduct.isCustom !== false;
+      const finalFabric = isCustomProduct ? 'Premium' : 'Classic';
+
+      const orderData: Order = {
+        id: orderId,
+        name: `${checkoutName.trim()} - طلب: ${checkoutProduct.name}`,
+        phone: checkoutPhone.trim(),
+        altPhone: checkoutAltPhone.trim(),
+        address: checkoutAddress.trim(),
+        size: checkoutSize,
+        fabric: finalFabric as any,
+        notes: checkoutNotes.trim() || `أوردر فخم مباشر لـ ${checkoutProduct.name}`,
+        designId: checkoutProduct.id,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      };
+
+      await setDoc(doc(db, 'orders', orderId), orderData);
+      setCheckoutSuccess(true);
+
+      // Trigger Telegram notification
+      const telegramText = `🔔 <b>أوردر جديد تم تسجيله بالموقع! 🎉</b>\n\n` +
+        `👤 <b>الاسم:</b> ${checkoutName.trim()}\n` +
+        `📱 <b>الواتس:</b> <code>${checkoutPhone.trim()}</code>\n` +
+        `📞 <b>هاتف بديل (اختياري):</b> ${checkoutAltPhone.trim() || 'لا يوجد'}\n` +
+        `📍 <b>العنوان بالتفصيل:</b> ${checkoutAddress.trim()}\n` +
+        `📏 <b>المقاس:</b> <code>${checkoutSize}</code>\n` +
+        `👕 <b>نوع وخيار المنتج:</b> ${checkoutProduct.name}\n` +
+        `🛑 <b>ملاحظات إضافية:</b> ${checkoutNotes.trim() || 'لا يوجد'}\n` +
+        `🆔 <b>كود الأوردر:</b> <code>${orderId}</code>`;
+
+      await sendTelegramNotification(orderData, telegramText);
+
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء رصد الأوردر بالخادم الرئيسي، من فضلك تفقد اتصالك بالشبكة.');
+    } finally {
+      setCheckoutSubmitting(false);
+    }
+  };
 
   // VIP Pages - Apps states
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -352,19 +427,19 @@ export default function App() {
         const configDocRef = doc(db, 'config', 'app');
         const configSnap = await getDoc(configDocRef);
         const defaultTypes = [
-          { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
-          { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+          { id: 'premium', name: 'تيشرت بريميوم مذهب فخم (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+          { id: 'classic', name: 'تيشرت كلاسيك بالاسم (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
           { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
         ];
 
         if (!configSnap.exists()) {
           const defaultConfig: ConfigApp = {
             classicPrice: 499,
-            classicDescription: "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• طباعة وحفر DTF مذهب عالي الدقة بالاسم",
+            classicDescription: "تيشرت وان سايز أوفرسايز بخامات مريحة وفخمة\n• جودة أقمشة حلوة وممتازة للغاية\n• طباعة وتطريز مذهب عالي الدقة بالاسم الكلاسيكي",
             duoPrice: 899,
-            duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
+            duoDescription: "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين بخامات ممتازة واسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
             premiumPrice: 880,
-            premiumDescription: "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+            premiumDescription: "باقة بريميوم - النسخة الملكية الأقوى\n• حفر وطباعة بالاسم مع تصميم التاج الملكي الفاخر\n• خامات مريحة ومقاومة للغسيل مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: '201223043867',
             focusedProduct: 'premium',
             types: defaultTypes,
@@ -372,7 +447,9 @@ export default function App() {
             vipAppUrl: DEFAULT_VIP_APP_URL,
             stage1IconUrl: '/icons/stage1.png',
             stage2IconUrl: '/icons/stage2.png',
-            stage3IconUrl: '/icons/stage3.png'
+            stage3IconUrl: '/icons/stage3.png',
+            telegramBotToken: '123456789:AAFGfakeTokenStringHere',
+            telegramChatId: '987654321'
           };
           await setDoc(configDocRef, defaultConfig);
           setConfigApp(defaultConfig);
@@ -382,11 +459,11 @@ export default function App() {
           const data = configSnap.data();
           const merged: ConfigApp = {
             classicPrice: data.classicPrice || 499,
-            classicDescription: data.classicDescription || "تيشرت وان سايز أوفرسايز قطن مصري فاخر ثقيل\n• قطن مصري 100% ثقيل للغاية\n• طباعة وحفر DTF مذهب عالي الدقة بالاسم",
+            classicDescription: data.classicDescription || "تيشرت وان سايز أوفرسايز بخامات مريحة وفخمة\n• جودة أقمشة حلوة وممتازة للغاية\n• طباعة وتطريز مذهب عالي الدقة بالاسم الكلاسيكي",
             duoPrice: data.duoPrice || 899,
-            duoDescription: data.duoDescription || "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين قطن مذهبتين باسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
+            duoDescription: data.duoDescription || "عرض التبادل الثنائي (الكابلز) المذهب\n• قطعتين بخامات ممتازة واسمين من اختيارك\n• توفير استثنائي بقيمة 120 جنيه مصري\n• كود ثنائي لتفعيل بوابة VIP المخصصة",
             premiumPrice: data.premiumPrice || 880,
-            premiumDescription: data.premiumDescription || "باقة التاج المذهب - النسخة الملكية الأقوى\n• حفر وطباعة DTF مذهب بالاسم مع تصميم التاج الملكي الفاخر\n• قطن مصري ثقيل القوام مريح للغاية مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
+            premiumDescription: data.premiumDescription || "باقة بريميوم - النسخة الملكية الأقوى\n• حفر وطباعة بالاسم مع تصميم التاج الملكي الفاخر\n• خامات مريحة ومقاومة للغسيل مع تفاصيل فخمة\n• دخول مجاني مدى الحياة لبوابة النفاذ VIP والترقيات",
             whatsappNumber: data.whatsappNumber || '201223043867',
             focusedProduct: data.focusedProduct || 'premium',
             types: data.types || defaultTypes,
@@ -394,7 +471,9 @@ export default function App() {
             vipAppUrl: data.vipAppUrl || DEFAULT_VIP_APP_URL,
             stage1IconUrl: data.stage1IconUrl || '/icons/stage1.png',
             stage2IconUrl: data.stage2IconUrl || '/icons/stage2.png',
-            stage3IconUrl: data.stage3IconUrl || '/icons/stage3.png'
+            stage3IconUrl: data.stage3IconUrl || '/icons/stage3.png',
+            telegramBotToken: data.telegramBotToken || '123456789:AAFGfakeTokenStringHere',
+            telegramChatId: data.telegramChatId || '987654321'
           };
           setConfigApp(merged);
         }
@@ -756,6 +835,39 @@ export default function App() {
     }
   };
 
+  // Send notifications of new orders to private Telegram Channel/User
+  const sendTelegramNotification = async (order: Order, whatsappMessageText: string) => {
+    try {
+      const token = configApp.telegramBotToken;
+      const chatId = configApp.telegramChatId;
+      if (!token || !chatId || token.includes('fake') || chatId.includes('fake')) {
+        console.log('[Telegram API] Telegram credentials are not yet set or use dummy values. Notification skipped.');
+        return;
+      }
+      const rawText = `🔔 <b>طلب ملكي جديد وارد! (ESM Store)</b>\n\n` +
+        `👤 <b>الاسم:</b> ${order.name}\n` +
+        `📱 <b>الجوال:</b> <code>${order.phone}</code>\n` +
+        `👕 <b>نوع الخامة:</b> ${order.fabric}\n` +
+        `📝 <b>ملاحظات وتخصيص:</b> ${order.notes || 'لا يوجد'}\n` +
+        `🏷️ <b>رمز التصميم/البحث:</b> ${order.designId || 'لا يوجد'}\n` +
+        `🆔 <b>رقم أوردر النظام:</b> <code>${order.id}</code>\n\n` +
+        `💬 <b>نص رسالة الواتس الكلي للنسخ:</b>\n<i>${whatsappMessageText}</i>`;
+
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: rawText,
+          parse_mode: 'HTML'
+        })
+      });
+      console.log('[Telegram API] Notification dispatch completed.');
+    } catch (err) {
+      console.error('[Telegram API] Error sending private notification:', err);
+    }
+  };
+
   // Quick Order submit (no results matched)
   const handleQuickOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -770,7 +882,7 @@ export default function App() {
         id: orderId,
         name: leadName.trim(),
         phone: leadPhone.trim(),
-        fabric: leadFabric,
+        fabric: leadFabric as any,
         notes: leadNotes.trim() || 'طلب تخصيص قطعة مذهبة نادرة بالاسم.',
         designId: searchedName,
         status: 'pending',
@@ -784,6 +896,9 @@ export default function App() {
       const textMsg = `أهلاً براند إسمي ذهب الفخم، قمت للتو بطلب تيشيرت مخصص في الكتالوج:\nالاسم المرغوب: ${leadName}\nرقم المحمول: ${leadPhone}\nنوع الخامة: ${leadFabric === 'Premium' ? 'تاج مذهب بريميوم' : 'كلاسيك مصفر'}\nملاحظات: ${leadNotes || 'لا يوجد'}`;
       const encodedText = encodeURIComponent(textMsg);
       
+      // Dispatch Telegram notification
+      await sendTelegramNotification(orderData, textMsg);
+
       setTimeout(() => {
         window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodedText}`, '_blank');
       }, 1000);
@@ -856,6 +971,9 @@ export default function App() {
       // Craft beautiful WhatsApp message (WITHOUT customer's phone number as requested for privacy/cleanliness)
       const textMsg = `أهلاً براند إسمي ذهب الفخم 👑\n\nلقد قمت للتو بطلب تصميم ملكي مخصص بالاسم عبر الموقع:\n- الاسم المطلوب (بالعربي): ${trimmedAr}\n- الاسم المطلوب (بالإنجليزي): ${customNameEn.trim() || 'لا يوجد'}\n- نوع وخامة التيشرت: ${selectedType.name} (${selectedType.priceLabel})\n- ملاحظات وتعديلات خاصة: ${customNotes.trim() || 'لا يوجد'}\n\nبرجاء تأكيد حجز هذا الطلب الملكي الفاخر والبدء الفوري ⚡`;
       const encodedText = encodeURIComponent(textMsg);
+
+      // Dispatch Telegram notification
+      await sendTelegramNotification(orderData, textMsg);
 
       setTimeout(() => {
         window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodedText}`, '_blank');
@@ -1060,20 +1178,20 @@ export default function App() {
     const isProfileFound = !!publicProfile;
 
     return (
-      <div className="min-h-screen bg-black text-white relative flex flex-col justify-between overflow-hidden">
+      <div className="min-h-screen bg-[#FAFAF9] text-stone-900 relative flex flex-col justify-between overflow-hidden">
         <ParticleBackground />
 
         {/* Dynamic header - Hidden in Standalone PWA mode for premium feeling */}
         {!isStandalone && (
-          <header className="border-b border-gold/10 bg-black/80 sticky top-0 z-40 backdrop-blur w-full">
+          <header className="border-b border-stone-200 bg-white sticky top-0 z-40 backdrop-blur w-full">
             <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-              <button onClick={() => navigateTo('/')} className="flex items-center gap-2 cursor-pointer">
+              <button onClick={() => navigateTo('/')} className="flex items-center gap-2 cursor-pointer bg-transparent border-0">
                 <Crown className="w-6 h-6 text-gold gold-glow" />
                 <span className="font-serif font-black tracking-wider text-sm gold-gradient">ESM • إسمي ذهب</span>
               </button>
               <button 
                 onClick={() => navigateTo('/')}
-                className="text-xs font-bold text-zinc-400 hover:text-gold flex items-center gap-1 transition-all cursor-pointer"
+                className="text-xs font-bold text-stone-500 hover:text-gold flex items-center gap-1 transition-all cursor-pointer bg-transparent border-0"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>اطلب قطعة لنفسك</span>
@@ -1090,25 +1208,25 @@ export default function App() {
                 transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
                 className="w-10 h-10 border-4 border-gold border-t-transparent rounded-full mx-auto"
               />
-              <p className="text-xs text-zinc-400 mt-4">جاري فتح ملف الأسياد الفخم...</p>
+              <p className="text-xs text-stone-500 mt-4">جاري فتح ملف الأسياد الفخم...</p>
             </div>
           ) : isProfileFound && publicProfile ? (
             /* Premium Profile matched! */
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md bg-zinc-950/80 border border-gold/20 p-8 rounded-3xl shadow-2xl text-center backdrop-blur-md relative space-y-6"
+              className="w-full max-w-md bg-white border border-stone-200 p-8 rounded-3xl shadow-xl text-center backdrop-blur-md relative space-y-6"
             >
               {/* Profile Image card */}
               <div className="relative inline-block mx-auto">
                 <img 
                   src={publicProfile.photoUrl} 
                   alt={publicProfile.displayName} 
-                  className="w-28 h-28 rounded-full object-cover border-4 border-gold mx-auto shadow-xl cursor-zoom-in hover:brightness-110 transition-all"
+                  className="w-28 h-28 rounded-full object-cover border-4 border-gold mx-auto shadow-md cursor-zoom-in hover:brightness-110 transition-all"
                   onClick={() => setFullscreenImage(publicProfile.photoUrl)}
                 />
                 {publicProfile.level === 3 && (
-                  <div className="absolute top-0 right-0 bg-black border border-gold rounded-full p-2 shadow-lg shadow-gold/40">
+                  <div className="absolute top-0 right-0 bg-white border border-gold rounded-full p-2 shadow-lg shadow-gold/10">
                     <Crown className="w-6 h-6 text-gold gold-glow" />
                   </div>
                 )}
@@ -1120,12 +1238,12 @@ export default function App() {
                   <div className="flex justify-center items-center gap-1.5">
                     <h1 className="text-xl font-black font-serif gold-gradient">وجدنا قطعة باسمك {publicProfile.displayName} ✨</h1>
                   </div>
-                  <p className="text-xs text-zinc-400 font-mono font-semibold">@{publicProfile.username}</p>
+                  <p className="text-xs text-stone-500 font-mono font-semibold">@{publicProfile.username}</p>
                   <div className="pt-1">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase inline-block mx-auto ${
                       publicProfile.level === 3 ? 'bg-gold text-black shadow shadow-gold/20' :
                       publicProfile.level === 2 ? 'bg-zinc-200 text-black' :
-                      'bg-zinc-800 text-zinc-300'
+                      'bg-zinc-100 text-stone-600'
                     }`}>
                       {publicProfile.level === 3 ? 'رتبة التاج الذهبي الملكية 👑' :
                        publicProfile.level === 2 ? 'الرتبة الفضية الفاخرة🥈' :
@@ -1134,34 +1252,34 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="py-4 border-y border-zinc-900">
-                  <p className="text-xs text-zinc-300 font-medium italic leading-relaxed select-all">
+                <div className="py-4 border-y border-stone-100">
+                  <p className="text-xs text-stone-700 font-medium italic leading-relaxed select-all">
                     "{publicProfile.bio || 'محب ومقتني لملابس الأسياد الفخمة من ESM'}"
                   </p>
                 </div>
               </div>
 
               {/* Likes and Interactivity (Child 3) */}
-              <div className="p-4 bg-zinc-950/90 border border-zinc-900 rounded-2xl flex flex-col items-center justify-center space-y-3 relative overflow-hidden">
+              <div className="p-4 bg-stone-50 border border-stone-100 rounded-2xl flex flex-col items-center justify-center space-y-3 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-32 h-32 bg-gold/5 blur-2xl rounded-full pointer-events-none" />
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider relative">ادعم صاحب الملف المذهب بنقرة إعجاب</span>
+                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider relative">ادعم صاحب الملف المذهب بنقرة إعجاب</span>
                 
                 <div className="flex items-center gap-4 relative">
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={handleToggleLike}
-                    className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg ${
+                    className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-md ${
                       hasLikedPublic
-                        ? 'bg-red-500/10 border-red-500 text-red-500 shadow-red-500/10'
-                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-gold/30 hover:text-gold'
+                        ? 'bg-red-50 border-red-500 text-white shadow-red-500/10'
+                        : 'bg-white border-stone-200 text-stone-400 hover:border-gold/30 hover:text-gold'
                     }`}
                   >
-                    <Heart className={`w-5 h-5 ${hasLikedPublic ? 'fill-red-500 text-red-500' : ''}`} />
+                    <Heart className={`w-5 h-5 ${hasLikedPublic ? 'fill-white text-white' : ''}`} />
                   </motion.button>
                   
                   <div className="text-right">
-                    <p className="text-xs text-zinc-400 font-medium">إجمالي التفاعل الحالي</p>
-                    <p className="text-sm font-black text-white font-mono">{publicProfile?.likes || 0} إعجاب فخم ✨</p>
+                    <p className="text-xs text-stone-500 font-medium font-sans">إجمالي التفاعل الحالي</p>
+                    <p className="text-sm font-black text-stone-900 font-sans">{publicProfile?.likes || 0} إعجاب فخم ✨</p>
                   </div>
                 </div>
               </div>
@@ -1176,11 +1294,11 @@ export default function App() {
                       el?.scrollIntoView({ behavior: 'smooth' });
                     }, 500);
                   }}
-                  className="w-full py-3 bg-gold text-black hover:bg-gold/90 transition-colors text-xs font-black rounded-xl cursor-pointer shadow-lg shadow-gold/30 flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-stone-950 text-white hover:bg-stone-900 transition-colors text-xs font-black rounded-xl cursor-pointer shadow-lg flex items-center justify-center gap-2"
                 >
                   <span>شوف أعلى المتصدرين واطلب قطعتك المذهبة 🏆</span>
                 </button>
-                <p className="text-[10px] text-zinc-500 leading-relaxed font-sans mt-1">
+                <p className="text-[10px] text-stone-500 leading-relaxed font-sans mt-1">
                   احصل على تيشيرت وان سايز أوفرسايز قطن مصري 100% ثقيل مطرز باسمك الفخم بلمسات ملكية أنيقة.
                 </p>
               </div>
@@ -1188,16 +1306,16 @@ export default function App() {
           ) : (
             /* User profile not found fallback */
             <div className="text-center space-y-4 max-w-sm">
-              <div className="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto">
-                <HelpCircle className="w-8 h-8 text-zinc-650" />
+              <div className="w-16 h-16 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center mx-auto">
+                <HelpCircle className="w-8 h-8 text-stone-400" />
               </div>
-              <h2 className="text-lg font-bold">الملف الفخم غير مدرج بالبراند</h2>
-              <p className="text-xs text-zinc-400 leading-relaxed">
+              <h2 className="text-lg font-bold text-stone-900">الملف الفخم غير مدرج بالبراند</h2>
+              <p className="text-xs text-stone-500 leading-relaxed">
                 عذراً، هذا الحساب ليس مسجلاً أو ربما تم تغيير اسم المعرف الملكي الخاص به. يرجى مراجعة وتفقد الرابط الفخم مجدداً.
               </p>
               <button 
                 onClick={() => navigateTo('/')}
-                className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs hover:border-gold/50 cursor-pointer"
+                className="px-4 py-2 bg-stone-950 text-white rounded-xl text-xs hover:bg-stone-900 cursor-pointer"
               >
                 العودة للرئيسية
               </button>
@@ -1206,7 +1324,7 @@ export default function App() {
         </main>
 
         {!isStandalone && (
-          <footer className="border-t border-zinc-900 bg-black py-4 text-center text-[10px] text-zinc-550 leading-relaxed text-zinc-500 relative z-10">
+          <footer className="border-t border-stone-200 bg-white py-4 text-center text-[10px] text-stone-500 leading-relaxed relative z-10">
             <p>© جميع الحقوق محفوظة لبراند إسمي ذهب • 2026</p>
           </footer>
         )}
@@ -1216,17 +1334,17 @@ export default function App() {
 
   // HOMEPAGE VIEW (/) DEFAULT VIEW
   return (
-    <div className="min-h-screen bg-black text-white relative flex flex-col justify-between overflow-x-hidden">
+    <div className="min-h-screen bg-[#FAFAF9] text-stone-900 relative flex flex-col justify-between overflow-x-hidden">
       <ParticleBackground />
 
       {/* LUXURY ROYAL HEADER */}
-      <header className="border-b border-gold/10 bg-black/80 sticky top-0 z-40 backdrop-blur w-full">
+      <header className="border-b border-stone-200 bg-white/95 sticky top-0 z-40 backdrop-blur w-full">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           {/* Logo element */}
-          <div className="flex items-center gap-2">
+          <button onClick={() => navigateTo('/')} className="flex items-center gap-2 bg-transparent border-0 cursor-pointer">
             <Crown className="w-7 h-7 text-gold gold-glow" />
             <h1 className="font-serif font-black tracking-wider text-md sm:text-lg gold-gradient">ESM • إسمي ذهب</h1>
-          </div>
+          </button>
 
           <div className="flex items-center gap-4">
             <button
@@ -1234,14 +1352,14 @@ export default function App() {
                 const targetUrl = configApp.vipAppUrl || DEFAULT_VIP_APP_URL;
                 window.open(targetUrl, '_blank');
               }}
-              className="px-4 py-2 rounded-xl bg-gold text-black text-xs font-black hover:bg-gold/90 transition-colors cursor-pointer flex items-center gap-1 shadow-sm shadow-gold/20"
+              className="px-4 py-2 rounded-xl bg-stone-950 text-white text-xs font-black hover:bg-stone-900 transition-colors cursor-pointer flex items-center gap-1 shadow-md border border-stone-850"
             >
-              <Crown className="w-3.5 h-3.5 text-black" />
+              <Crown className="w-3.5 h-3.5 text-gold gold-glow" />
               <span>بوابة الدخول الملكي VIP 👑</span>
             </button>
             <button 
               onClick={() => setIsPolicyOpen(true)}
-              className="text-xs font-bold text-zinc-400 hover:text-gold transition-colors hidden sm:inline-block cursor-pointer"
+              className="text-xs font-bold text-stone-500 hover:text-gold transition-colors hidden sm:inline-block cursor-pointer bg-transparent border-0"
             >
               سياسة الضمان والاسترجاع 📖
             </button>
@@ -1257,39 +1375,39 @@ export default function App() {
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 bg-gold/15 border border-gold/30 rounded-full"
+            className="inline-flex items-center gap-1.5 px-3 py-1 bg-gold/10 border border-gold/20 rounded-full"
           >
-            <Crown className="w-3.5 h-3.5 text-gold gold-glow" />
-            <span className="text-[10px] text-gold font-extrabold uppercase tracking-widest leading-relaxed">براند الألبسة الفخمة والأسياد</span>
+            <Crown className="w-3.5 h-3.5 text-gold gold-glow animate-pulse" />
+            <span className="text-[10px] text-gold font-extrabold uppercase tracking-widest leading-relaxed">براند الألبسة الفخمة والأسياد • ESM Store</span>
           </motion.div>
 
           <motion.h2
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-3xl sm:text-5xl font-black font-serif leading-tight sm:leading-none text-white gold-gradient"
+            className="text-3xl sm:text-5xl font-black font-serif leading-tight sm:leading-none text-stone-900 gold-gradient"
           >
-            قطعة فنية فخمة مستوحاة من هيبة اسمك!
+            بصمة فخامة نادرة تخبر العالم بهويتك!
           </motion.h2>
 
           <motion.p
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-xs sm:text-sm text-zinc-400 max-w-xl mx-auto leading-relaxed"
+            className="text-xs sm:text-sm text-stone-600 max-w-xl mx-auto leading-relaxed"
           >
-            تيشيرت وان سايز أوفرسايز منسوج بقطن مصري 100% ثقيل للغاية ثقيل القوام، ومطرز يدوياً باسمك الفخم بلمسات وخيوط حريرية مطلية بالذهب وتاج الملوك.
+            خطوط استثنائية منسوجة بقطن مصري 100% ثقيل للغاية ثقيل القوام (Oversized). سواء كنت تبحث عن تيشيرت مذهب ومطرز ومصمم يدوياً باسمك الفاخر، أو تبحث عن قطع فنية معاصرة وجذابة تناسب ذوق الأسياد؛ علامتنا صممت لتتفوق على أرقى دور الأزياء العالمية بأسلوب مبهر.
           </motion.p>
         </section>
 
         {/* TOP SEARCH BAR IN CATOLOGUE */}
-        <section id="search-section" className="max-w-2xl mx-auto bg-zinc-950/40 border border-zinc-900 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl backdrop-blur">
+        <section id="search-section" className="max-w-2xl mx-auto bg-white border border-stone-200 rounded-3xl p-6 md:p-8 space-y-6 shadow-lg shadow-stone-100/60 backdrop-blur">
           <div className="text-center space-y-2">
-            <h3 className="text-md sm:text-lg font-bold text-white flex items-center justify-center gap-2">
+            <h3 className="text-md sm:text-lg font-bold text-stone-900 flex items-center justify-center gap-2">
               <Search className="w-5 h-5 text-gold" />
               <span>ابحث عن نمط اسمك المذهب</span>
             </h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-xs text-stone-500 leading-relaxed">
               اكتب اسمك باللغة العربية أو الإنجليزية لتفقد جاهزيته بالخط المذهب الفاخر من مصممينا المعتمدين.
             </p>
           </div>
@@ -1300,12 +1418,12 @@ export default function App() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="مثال: علي، أحمد، سارة، مريم..."
-              className="flex-grow px-4 py-3 bg-black border border-zinc-800 text-white text-xs rounded-xl focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all"
+              className="flex-grow px-4 py-3 bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all"
             />
             <button
               type="submit"
               disabled={isSearching}
-              className="px-5 py-3 bg-gold hover:bg-gold/90 text-black font-black text-xs rounded-xl transition-colors cursor-pointer"
+              className="px-5 py-3 bg-stone-950 hover:bg-stone-900 text-white font-black text-xs rounded-xl transition-colors cursor-pointer"
             >
               {isSearching ? 'جاري الاستعلام...' : 'ابحث الآن'}
             </button>
@@ -1318,25 +1436,25 @@ export default function App() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-4 pt-4 border-t border-zinc-900"
+                className="space-y-4 pt-4 border-t border-stone-100"
               >
                 {searchResults.length > 0 ? (
                   <div className="space-y-4">
-                    <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-r from-gold/10 via-amber-500/15 to-gold/10 rounded-2xl border border-gold/30 text-center space-y-1">
-                      <div className="text-xs sm:text-sm font-black text-gold flex items-center justify-center gap-2 gold-glow">
-                        <Sparkles className="w-4 h-4 text-gold animate-bounce" />
+                    <div className="flex flex-col items-center justify-center p-4 bg-amber-50/50 rounded-2xl border border-gold/20 text-center space-y-1">
+                      <div className="text-xs sm:text-sm font-black text-[#A27B2B] flex items-center justify-center gap-2 gold-glow">
+                        <Sparkles className="w-4 h-4 text-[#A27B2B] animate-bounce" />
                         <span>وجدنا قطعة باسمك!</span>
-                        <Crown className="w-4 h-4 text-gold" />
+                        <Crown className="w-4 h-4 text-[#A27B2B]" />
                       </div>
-                      <p className="text-[10px] text-zinc-300">لقد حظيت بتصميم مذهب نادر يليق بك تماماً:</p>
+                      <p className="text-[10px] text-stone-600">لقد حظيت بتصميم مذهب نادر يليق بك تماماً:</p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {searchResults.map((design) => (
                         <div 
                           key={design.id} 
-                          className="bg-black/60 border border-zinc-800 hover:border-gold/30 rounded-2xl p-4 flex gap-4 items-center transition-all group relative overflow-hidden"
+                          className="bg-white border border-stone-100 hover:border-gold/30 rounded-2xl p-4 flex gap-4 items-center transition-all group relative overflow-hidden shadow-sm"
                         >
-                          <div className="w-20 h-20 bg-zinc-950 p-1.5 rounded-xl flex items-center justify-center border border-zinc-900">
+                          <div className="w-20 h-20 bg-stone-50 p-1.5 rounded-xl flex items-center justify-center border border-stone-100">
                             <img 
                               src={design.imageUrl} 
                               alt={design.name} 
@@ -1346,14 +1464,14 @@ export default function App() {
                           </div>
                           
                           <div className="flex-grow space-y-1 text-right">
-                            <h4 className="font-bold text-xs text-white">{design.name}</h4>
-                            <p className="text-[10px] text-zinc-500 font-serif leading-relaxed">بتاج الملوك المذهب</p>
+                            <h4 className="font-bold text-xs text-stone-900">{design.name}</h4>
+                            <p className="text-[10px] text-stone-500 font-serif leading-relaxed">بتاج الملوك المذهب</p>
                             <button
                               onClick={() => {
                                 const textUrl = `${design.whatsappMessage}\nالتصميم: ${design.imageUrl}`;
                                 window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(textUrl)}`, '_blank');
                               }}
-                              className="px-3 py-1.5 bg-gold hover:bg-gold/85 text-black text-[10px] font-black rounded-lg cursor-pointer transition-all"
+                              className="px-3 py-1.5 bg-[#B89753] hover:opacity-90 text-white text-[10px] font-black rounded-lg cursor-pointer transition-all"
                             >
                               اطلب وخصص باسمك
                             </button>
@@ -1365,39 +1483,39 @@ export default function App() {
                 ) : (
                   /* Lead form logic: Name not found */
                   <div className="space-y-4 text-center py-2">
-                    <div className="p-3 bg-zinc-900/60 border border-zinc-800 text-zinc-400 text-xs rounded-xl leading-relaxed">
+                    <div className="p-3 bg-stone-50 border border-stone-200 text-stone-650 text-xs rounded-xl leading-relaxed text-stone-600">
                       الاسم الذي استعلمت عنه "<span className="text-gold font-bold">{searchedName}</span>" فريد من نوعه للغاية، ولأنه لا يوجد قطعة مطابقة للجاهز، سنقوم بتفصيل وتصميم خط مذهب خاص باسمك مخصوص فوراً! تعرّف على طلب التخصيص الاستثنائي:
                     </div>
 
                     {leadSuccess ? (
-                      <div className="p-4 bg-gold/10 border border-gold/30 text-gold text-xs rounded-xl font-bold font-sans space-y-1">
+                      <div className="p-4 bg-amber-50 border border-gold/20 text-[#A27B2B] text-xs rounded-xl font-bold font-sans space-y-1">
                         <div>تم حجز وتنسيق طلبك الفاخر كطلب خاص!</div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-1">جاري توجيهك لواتساب براند الأسياد لبدء الطباعة والتحضير الفوري...</div>
+                        <div className="text-[10px] text-stone-500 font-mono mt-1">جاري توجيهك لواتساب براند الأسياد لبدء الطباعة والتحضير الفوري...</div>
                       </div>
                     ) : (
                       <form onSubmit={handleQuickOrderSubmit} className="space-y-3 text-right">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-zinc-500 text-[10px] font-bold mb-1 mr-1">الاسم المرغوب طباعته وحفره بدقة على الصدر</label>
+                            <label className="block text-stone-500 text-[10px] font-bold mb-1 mr-1">الاسم المرغوب طباعته وحفره بدقة على الصدر</label>
                             <input
                               type="text"
                               required
                               value={leadName}
                               onChange={(e) => setLeadName(e.target.value)}
                               placeholder="مثال: يوسف، سمر..."
-                              className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold"
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-zinc-500 text-[10px] font-bold mb-1 mr-1">رقم الواتساب وبداية كود الدولة</label>
+                            <label className="block text-stone-500 text-[10px] font-bold mb-1 mr-1">رقم الواتساب وبداية كود الدولة</label>
                             <input
                               type="tel"
                               required
                               value={leadPhone}
                               onChange={(e) => setLeadPhone(e.target.value)}
                               placeholder="مثال: 20123456789"
-                              className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold"
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold"
                               style={{ direction: 'ltr' }}
                             />
                           </div>
@@ -1405,11 +1523,11 @@ export default function App() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-zinc-500 text-[10px] font-bold mb-1 mr-1">الخامة وقصة التيشيرت</label>
+                            <label className="block text-stone-500 text-[10px] font-bold mb-1 mr-1">الخامة وقصة التيشيرت</label>
                             <select
                               value={leadFabric}
                               onChange={(e) => setLeadFabric(e.target.value as any)}
-                              className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold font-bold"
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold font-bold"
                             >
                               <option value="Premium">قطن مذهب فاخر بالتاج (Premium)</option>
                               <option value="Classic">قطن مصري كلاسيكي (Classic)</option>
@@ -1417,13 +1535,13 @@ export default function App() {
                           </div>
 
                           <div>
-                            <label className="block text-zinc-500 text-[10px] font-bold mb-1 mr-1">أي ملاحظات إضافية (ألوان، مقاسات خاصة)</label>
+                            <label className="block text-stone-500 text-[10px] font-bold mb-1 mr-1">أي ملاحظات إضافية (ألوان، مقاسات خاصة)</label>
                             <input
                               type="text"
                               value={leadNotes}
                               onChange={(e) => setLeadNotes(e.target.value)}
                               placeholder="أوردر مقاس XL، شريط الظهر كلاسيك..."
-                              className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold"
+                              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold"
                             />
                           </div>
                         </div>
@@ -1431,10 +1549,10 @@ export default function App() {
                         <button
                           type="submit"
                           disabled={submittingLead}
-                          className="w-full py-2.5 bg-gold hover:bg-gold/90 text-black text-xs font-black rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-md shadow-gold/10"
+                          className="w-full py-2.5 bg-stone-950 hover:bg-stone-900 text-white text-xs font-black rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-md"
                         >
                           {submittingLead ? (
-                            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           ) : (
                             <span>تفصيل تيشيرت فخم باسمي</span>
                           )}
@@ -1448,8 +1566,8 @@ export default function App() {
           </AnimatePresence>
 
           {/* Custom Royal Order Toggle & Form */}
-          <div className="pt-4 border-t border-zinc-900 flex flex-col items-center gap-3">
-            <p className="text-[11px] text-zinc-400 text-center">مش لاقي اسمك في كتالوج تصاميم الأسياد؟ لا تقلق!</p>
+          <div className="pt-4 border-t border-stone-100 flex flex-col items-center gap-3">
+            <p className="text-[11px] text-stone-500 text-center">مش لاقي اسمك في كتالوج تصاميم الأسياد؟ لا تقلق!</p>
             <button
               type="button"
               id="toggle-custom-form-btn"
@@ -1457,15 +1575,15 @@ export default function App() {
                 setShowCustomOrderForm(!showCustomOrderForm);
                 if (!customFabric) {
                   const defaultTypes = [
-                    { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
-                    { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
-                    { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+                     { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+                     { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+                     { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
                   ];
                   const available = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
                   setCustomFabric(available[0].id || available[0].name);
                 }
               }}
-              className="px-4 py-2 bg-gradient-to-r from-gold/15 to-gold/5 border border-gold/30 hover:border-gold rounded-full text-[11px] font-extrabold tracking-wide text-gold cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-gold/15"
+              className="px-4 py-2 bg-amber-500/10 border border-[#B89753]/30 hover:border-[#B89753] rounded-full text-[11px] font-extrabold tracking-wide text-[#A27B2B] cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
             >
               <Sparkles className="w-3.5 h-3.5 text-gold gold-glow animate-pulse" />
               <span>{showCustomOrderForm ? 'إغلاق فورم الطلب الخاص ❌' : 'لو عايز تصميم باسمك اضغط هنا 👑'}</span>
@@ -1478,76 +1596,76 @@ export default function App() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden pt-4 border-t border-zinc-900 space-y-4 text-right"
+                className="overflow-hidden pt-4 border-t border-stone-100 space-y-4 text-right"
               >
-                <div className="p-4 bg-amber-500/5 border border-gold/20 rounded-2xl text-center space-y-1">
-                  <h4 className="text-xs font-black text-gold gold-glow flex items-center justify-center gap-1">
+                <div className="p-4 bg-amber-50 border border-gold/15 rounded-2xl text-center space-y-1">
+                  <h4 className="text-xs font-black text-[#A27B2B] flex items-center justify-center gap-1">
                     <Crown className="w-3.5 h-3.5 text-gold" />
                     <span>مواصفات واستمارة تفصيل الاسم الملكي المخصوص</span>
                   </h4>
-                  <p className="text-[10px] text-zinc-400 leading-relaxed">
+                  <p className="text-[10px] text-stone-500 leading-relaxed">
                     قم بتعبئة الاستمارة التالية، وسيتم إدراج طلبك فوراً في لوحة تحكم المصنع وتوجيهك لتنسيق الشحن والبدء الفوري.
                   </p>
                 </div>
 
                 {customOrderSuccess ? (
-                  <div className="p-4 bg-gold/10 border border-gold/30 text-gold text-xs rounded-xl font-bold font-sans text-center space-y-2">
-                    <div className="font-extrabold">🏆 لقد تم تسجيل وحجز أوردر تخصيص تيشيرت اسمك بنجاح!</div>
-                    <div className="text-[10px] text-zinc-400 font-mono">جاري الآن نقلك وتوجيهك لفتح محادثة واتساب مع براند الأسياد لإكمال التصميم الفخم...</div>
+                  <div className="p-4 bg-amber-50 border border-gold/20 text-stone-900 text-xs rounded-xl font-bold font-sans text-center space-y-2">
+                    <div className="font-extrabold text-[#A27B2B]">🏆 لقد تم تسجيل وحجز أوردر تخصيص تيشيرت اسمك بنجاح!</div>
+                    <div className="text-[10px] text-stone-500 font-mono">جاري الآن نقلك وتوجيهك لفتح محادثة واتساب مع براند الأسياد لإكمال التصميم الفخم...</div>
                   </div>
                 ) : (
                   <form onSubmit={handleCustomOrderSubmit} id="custom-royal-order-form" className="space-y-4">
                     {customOrderError && (
-                      <div className="p-2.5 bg-red-950/20 border border-red-950 text-red-400 text-[10px] rounded-lg text-center font-bold">
+                      <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 text-[10px] rounded-lg text-center font-bold">
                         ⚠️ {customOrderError}
                       </div>
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
                       <div>
-                        <label className="block text-zinc-400 text-[10px] font-bold mb-1 mr-1">الاسم باللغة العربية (إجباري) ✍️</label>
+                        <label className="block text-stone-600 text-[10px] font-bold mb-1 mr-1">الاسم باللغة العربية (إجباري) ✍️</label>
                         <input
                           type="text"
                           required
                           value={customNameAr}
                           onChange={(e) => setCustomNameAr(e.target.value)}
                           placeholder="مثلاً: يوسف أو مريم"
-                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold text-right"
+                          className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold text-right"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-zinc-500 text-[10px] font-semibold mb-1 mr-1">الاسم بالإنجليزية (اختياري) 🔠</label>
+                        <label className="block text-stone-500 text-[10px] font-semibold mb-1 mr-1">الاسم بالإنجليزية (اختياري) 🔠</label>
                         <input
                           type="text"
                           value={customNameEn}
                           onChange={(e) => setCustomNameEn(e.target.value)}
                           placeholder="مثلاً: Joseph or Mary"
-                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold text-right"
+                          className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold text-right"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
                       <div>
-                        <label className="block text-zinc-400 text-[10px] font-bold mb-1 mr-1">رقم جوال الواتساب للمتابعة 📱</label>
+                        <label className="block text-stone-600 text-[10px] font-bold mb-1 mr-1">رقم جوال الواتساب للمتابعة 📱</label>
                         <input
                           type="tel"
                           required
                           value={customPhone}
                           onChange={(e) => setCustomPhone(e.target.value)}
                           placeholder="مثال: 201200000000"
-                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold"
+                          className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold"
                           style={{ direction: 'ltr' }}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-zinc-400 text-[10px] font-bold mb-1 mr-1">اختر نوع تيشيرت وخامة الأسياد 👕</label>
+                        <label className="block text-stone-600 text-[10px] font-bold mb-1 mr-1">اختر نوع تيشيرت وخامة الأسياد 👕</label>
                         <select
                           value={customFabric}
                           onChange={(e) => setCustomFabric(e.target.value)}
-                          className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold font-bold text-right"
+                          className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold font-bold text-right"
                         >
                           {(configApp.types && configApp.types.length > 0 ? configApp.types : [
                             { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
@@ -1561,13 +1679,13 @@ export default function App() {
                     </div>
 
                     <div className="space-y-1 text-right">
-                      <label className="block text-zinc-550 text-[10px] font-semibold mb-1 mr-1">ملاحظات، مقاسات أو تعديلات مخصصة لشكل القطعة 🎨</label>
+                      <label className="block text-stone-500 text-[10px] font-semibold mb-1 mr-1">ملاحظات، مقاسات أو تعديلات مخصصة لشكل القطعة 🎨</label>
                       <textarea
                         rows={2}
                         value={customNotes}
                         onChange={(e) => setCustomNotes(e.target.value)}
                         placeholder="اكتب هنا المقاس المطلوب (مثل XL أو Oversized) وأي ألوان خيوط ترغب في تفضيلها..."
-                        className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded-xl focus:outline-none focus:border-gold text-right"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold text-right"
                       />
                     </div>
 
@@ -1581,9 +1699,9 @@ export default function App() {
                       const available = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
                       const selected = available.find(t => t.id === customFabric || t.name === customFabric) || available[0];
                       return selected ? (
-                        <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-zinc-850 p-3 rounded-2xl text-center space-y-0.5">
-                          <span className="text-[10px] text-zinc-400 block">مواصفات وسعر هذه الخامة المحددة:</span>
-                          <span className="text-xs font-black text-gold font-sans gold-glow leading-relaxed">{selected.priceLabel}</span>
+                        <div className="bg-stone-100 border border-stone-200 p-3 rounded-2xl text-center space-y-0.5">
+                          <span className="text-[10px] text-stone-500 block">مواصفات وسعر هذه الخامة المحددة:</span>
+                          <span className="text-xs font-black text-stone-900 font-sans leading-relaxed">{selected.priceLabel}</span>
                         </div>
                       ) : null;
                     })()}
@@ -1591,13 +1709,13 @@ export default function App() {
                     <button
                       type="submit"
                       disabled={submittingCustomOrder}
-                      className="w-full py-2.5 bg-gradient-to-r from-gold via-yellow-500 to-gold text-black text-xs font-black rounded-xl transition-all hover:opacity-95 flex items-center justify-center gap-1.5 shadow-lg shadow-gold/25 cursor-pointer"
+                      className="w-full py-2.5 bg-stone-950 hover:bg-stone-900 text-white text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg cursor-pointer"
                     >
                       {submittingCustomOrder ? (
-                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                        <Crown className="w-4 h-4 text-black" />
+                        <Crown className="w-4 h-4 text-gold" />
                           <span>تأكيد طلب التفصيل الملكي المخصوص</span>
                         </>
                       )}
@@ -1609,130 +1727,342 @@ export default function App() {
           </AnimatePresence>
         </section>
 
-        {/* HOMEPAGE FEATURED DESIGNS CATALOGUE */}
-        <section className="space-y-8">
-          <div className="text-center space-y-2">
-            <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">معرض تصاميم الأسياد المحددة</h3>
-            <p className="text-xs text-zinc-400">تصاميم حصرية تم تجهيز خطوطها الفنية لعرض الفخامة الملكية</p>
+        {/* HOMEPAGE SPLIT CATALOGUE */}
+        <section id="products-catalogue" className="space-y-16">
+          {/* SECTION 1: CUSTOM CLOTHING ON-DEMAND */}
+          <div className="space-y-8">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center gap-1 bg-amber-500/10 border border-gold/20 px-3 py-1 rounded-full text-[#A27B2B] text-[10px] font-extrabold shadow-sm">
+                <Crown className="w-3 h-3 text-gold" />
+                <span>طباعة مخصوصة وتطريز مذهب شخصي On-Demand</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient text-stone-900">الملابس المخصوصة بالاسم 👑</h3>
+              <p className="text-xs text-stone-500 leading-relaxed">الباقات الثلاث والقطع المخصوصة والجلابيات المصممة والمنقوشة خصيصاً باسمك بالخطوط الذهبية</p>
+            </div>
+
+            {loadingFeatured ? (
+              <div className="flex justify-center py-12">
+                <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                {/* 3 CORE PACKAGES */}
+                {[
+                  {
+                    id: 'classic',
+                    name: 'تيشرت كلاسيك بالاسم (Classic)',
+                    sub: 'العرض الفردي الأساسي',
+                    price: configApp.classicPrice,
+                    description: configApp.classicDescription,
+                    imageUrl: configApp.stage1IconUrl || '/icons/stage1.png',
+                    colorClass: 'silver-gradient',
+                    isCustom: true,
+                    availableSizes: ['S', 'M', 'L', 'XL', 'XXL']
+                  },
+                  {
+                    id: 'premium',
+                    name: 'باقة بريميوم بالتاج المذهب (Premium)',
+                    sub: 'أحسن صفقة وهيبة ملونة 🔥',
+                    price: configApp.premiumPrice,
+                    description: configApp.premiumDescription,
+                    imageUrl: configApp.stage3IconUrl || '/icons/stage3.png',
+                    colorClass: 'gold-gradient',
+                    isCustom: true,
+                    availableSizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+                  },
+                  {
+                    id: 'duo',
+                    name: 'عرض الكابلز الثنائي بالاسم (Duo)',
+                    sub: 'عرض ترويجي استثنائي ثنائي',
+                    price: configApp.duoPrice,
+                    description: configApp.duoDescription,
+                    imageUrl: configApp.stage2IconUrl || '/icons/stage2.png',
+                    colorClass: 'silver-gradient',
+                    isCustom: true,
+                    availableSizes: ['S', 'M', 'L', 'XL', 'XXL']
+                  }
+                ].map((pkg) => {
+                  const isFocused = configApp.focusedProduct === pkg.id;
+                  return (
+                    <div 
+                      key={pkg.id}
+                      className={`bg-white rounded-3xl p-6 hover:shadow-xl transition-all flex flex-col justify-between space-y-4 relative overflow-hidden shadow-md text-right ${
+                        isFocused 
+                          ? 'border-2 border-gold shadow-gold/5 transform md:-translate-y-2 bg-stone-50/20' 
+                          : 'border border-stone-200 hover:border-gold/25'
+                      }`}
+                    >
+                      {isFocused && (
+                        <div className="absolute top-0 left-0 bg-gold text-stone-950 text-[8px] font-black px-2.5 py-1 rounded-br-xl uppercase tracking-widest animate-pulse z-10">
+                          موصى به 🔥
+                        </div>
+                      )}
+                      
+                      <div className="space-y-3">
+                        <div className="h-40 bg-stone-50/60 p-3 rounded-xl flex items-center justify-center border border-stone-100 relative overflow-hidden max-w-[200px] mx-auto">
+                          <img 
+                            src={pkg.imageUrl} 
+                            alt={pkg.name} 
+                            className="h-full object-contain" 
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+
+                        <div className="text-center space-y-1">
+                          <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">
+                            {pkg.sub}
+                          </span>
+                          <h4 className="text-xs sm:text-sm font-black gold-gradient leading-relaxed">{pkg.name}</h4>
+                          <div className="font-mono text-xl font-bold text-gold">
+                            {pkg.price} <span className="text-[10px] font-sans text-stone-500">EGP</span>
+                          </div>
+                        </div>
+
+                        <p className="text-[9px] text-stone-605 text-stone-600 leading-relaxed font-sans whitespace-pre-line bg-stone-50 p-3 rounded-xl border border-stone-100">
+                          {pkg.description}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setCheckoutSuccess(false);
+                          setCheckoutProduct(pkg);
+                          setCheckoutName('');
+                          setCheckoutPhone('');
+                          setCheckoutAltPhone('');
+                          setCheckoutAddress('');
+                          setCheckoutSize(pkg.availableSizes[1] || 'L');
+                          setCheckoutNotes('');
+                        }}
+                        className={`w-full py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
+                          isFocused 
+                            ? 'bg-[#B89753] text-white hover:opacity-95 shadow-md shadow-gold/15' 
+                            : 'bg-stone-950 hover:bg-stone-900 text-white'
+                        }`}
+                      >
+                        اطلب هذه الباقة الملكية
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* FIREBASE CUSTOM DESIGNS FOR ON-DEMAND PRESETS */}
+            <div className="space-y-4 max-w-7xl mx-auto pt-8">
+              <div className="text-right border-r-2 border-gold pr-3 mb-4">
+                <h4 className="text-xs font-black text-stone-850 text-stone-800">تصاميم الأسماء المكتوبة الملكية المتاحة بالكتالوج</h4>
+                <p className="text-[10px] text-stone-500 leading-relaxed">اختر أحد التصاميم الجاهزة المذهبة للتفصيل الفوري باسم مخصص من اختيارك</p>
+              </div>
+
+              {loadingFeatured ? (
+                <div className="flex justify-center py-6">
+                  <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : featuredDesigns.filter(d => d.isCustom !== false).length === 0 ? (
+                <p className="text-[10px] text-stone-500 text-center py-4">سيتم إدراج المزيد من التصاميم المذهبة المخصصة قريباً بعون الله.</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {featuredDesigns.filter(d => d.isCustom !== false).map((design) => {
+                    const fallbackSizes = ['M', 'L', 'XL', 'XXL'];
+                    const sizesToUse = design.availableSizes && design.availableSizes.length > 0 ? design.availableSizes : fallbackSizes;
+                    return (
+                      <div 
+                        key={design.id}
+                        className="bg-white border border-stone-200 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gold/30 hover:shadow-xl hover:shadow-gold/5 transition-all text-center group relative overflow-hidden shadow-sm"
+                      >
+                        <div className="h-40 bg-stone-50/60 p-3 rounded-xl flex items-center justify-center border border-stone-100 relative overflow-hidden">
+                          <img 
+                            src={design.imageUrl} 
+                            alt={design.name} 
+                            className="h-full object-contain group-hover:scale-105 transition-all duration-300 cursor-zoom-in hover:brightness-110" 
+                            onClick={() => setFullscreenImage(design.imageUrl)}
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute top-2 right-2 bg-black/85 px-2 py-0.5 rounded text-[8px] font-bold text-gold border border-gold/25 flex items-center gap-0.5 z-10">
+                            <Crown className="w-2.5 h-2.5 text-gold" />
+                            <span>تطريز ذهبي مخصوص</span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-xs text-stone-900 group-hover:text-gold transition-colors">{design.name}</h4>
+                          <p className="text-[10px] text-stone-500 font-sans">تصميم باسم ذهبي فخيم ومخصص</p>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setCheckoutSuccess(false);
+                            setCheckoutProduct({
+                              ...design,
+                              availableSizes: sizesToUse
+                            });
+                            setCheckoutName('');
+                            setCheckoutPhone('');
+                            setCheckoutAltPhone('');
+                            setCheckoutAddress('');
+                            setCheckoutSize(sizesToUse[1] || 'L');
+                            setCheckoutNotes('');
+                          }}
+                          className="w-full py-2 bg-[#B89753] hover:opacity-95 text-white font-black text-[10px] rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5 text-white" />
+                          <span>اطلب الآن بالمقاس</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          {loadingFeatured ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+          {/* SECTION 2: REGULAR CLOTHING */}
+          <div className="space-y-8 pt-12 border-t border-stone-200">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center gap-1 bg-zinc-100 border border-zinc-200 px-3 py-1 rounded-full text-zinc-800 text-[10px] font-extrabold shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-zinc-650 text-zinc-600 animate-pulse" />
+                <span>تصاميم عصرية واستايل ونقوش جاهزة حلوة ومتميزة</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient text-stone-900">الملابس العادية والجاهزة 🔥</h3>
+              <p className="text-xs text-stone-500 leading-relaxed">نقوش عصرية وخطوط ملونة ستايل ورسومات جاهزة كاجوال بخامات حلوة ممتازة وعملية</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-              {featuredDesigns.map((design) => (
-                <div 
-                  key={design.id}
-                  className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gold/30 hover:shadow-xl hover:shadow-gold/5 transition-all text-center group relative overflow-hidden"
-                >
-                  <div className="h-44 bg-black/60 p-3 rounded-xl flex items-center justify-center border border-zinc-900/60 relative overflow-hidden">
-                    <img 
-                      src={design.imageUrl} 
-                      alt={design.name} 
-                      referrerPolicy="no-referrer"
-                      className="h-full object-contain group-hover:scale-105 transition-all duration-300 cursor-zoom-in hover:brightness-110" 
-                      onClick={() => setFullscreenImage(design.imageUrl)}
-                    />
-                    <div className="absolute top-2 right-2 bg-black/80 px-2 py-0.5 rounded text-[8px] font-bold text-gold border border-gold/20 flex items-center gap-0.5">
-                      <Crown className="w-2.5 h-2.5 text-gold" />
-                      <span>حفر DTF مذهب</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-xs text-white group-hover:text-gold transition-colors">{design.name}</h4>
-                    <p className="text-[10px] text-zinc-500 font-sans">تصميم الكتالوج المميز بـ "إسمي ذهب"</p>
-                  </div>
 
-                  <button
-                    onClick={() => {
-                      const textUrl = `${design.whatsappMessage}\nالتصميم: ${design.imageUrl}`;
-                      window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(textUrl)}`, '_blank');
-                    }}
-                    className="w-full py-2 bg-gradient-to-r from-amber-600 to-gold text-black hover:opacity-90 font-black text-[10px] rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1"
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>اطلب هذا التصميم الفخم</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+            {loadingFeatured ? (
+              <div className="flex justify-center py-6">
+                <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : featuredDesigns.filter(d => d.isCustom === false).length === 0 ? (
+              <div className="max-w-md mx-auto bg-stone-50 p-6 rounded-2xl text-center border border-stone-100 space-y-2">
+                <p className="text-[11px] text-stone-500 font-sans">سيتم إضافة تشكيلات الملابس الكلاسيكية الجاهزة والملابس العادية قريباً جداً في هذا المعرض والكتالوج الفاخر!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
+                {featuredDesigns.filter(d => d.isCustom === false).map((design) => {
+                  const fallbackSizes = ['M', 'L', 'XL', 'XXL'];
+                  const sizesToUse = design.availableSizes && design.availableSizes.length > 0 ? design.availableSizes : fallbackSizes;
+                  return (
+                    <div 
+                      key={design.id}
+                      className="bg-white border border-stone-200 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gold/30 hover:shadow-xl hover:shadow-gold/5 transition-all text-center group relative overflow-hidden shadow-sm"
+                    >
+                      <div className="h-40 bg-stone-50/60 p-3 rounded-xl flex items-center justify-center border border-stone-100 relative overflow-hidden">
+                        <img 
+                          src={design.imageUrl} 
+                          alt={design.name} 
+                          className="h-full object-contain group-hover:scale-105 transition-all duration-300 cursor-zoom-in hover:brightness-110" 
+                          onClick={() => setFullscreenImage(design.imageUrl)}
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute top-2 right-2 bg-stone-900 text-stone-100 border border-zinc-800 px-2 py-0.5 rounded text-[8px] font-bold flex items-center gap-0.5 z-10">
+                          <span>قطعة جاهزة كاجوال</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-xs text-stone-900 group-hover:text-gold transition-colors">{design.name}</h4>
+                        <p className="text-[10px] text-stone-500 font-sans">خامات حلوة ممتازة وتصميم فخم وعصري</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setCheckoutSuccess(false);
+                          setCheckoutProduct({
+                            ...design,
+                            availableSizes: sizesToUse
+                          });
+                          setCheckoutName('');
+                          setCheckoutPhone('');
+                          setCheckoutAltPhone('');
+                          setCheckoutAddress('');
+                          setCheckoutSize(sizesToUse[1] || 'L');
+                          setCheckoutNotes('');
+                        }}
+                        className="w-full py-2 bg-zinc-950 hover:bg-stone-900 text-white font-bold text-[10px] rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5 text-white" />
+                        <span>اطلب هذه القطعة الجاهزة</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </section>
 
-        {/* LEADERBOARD / COMPETITIVE SECTION */}
+        {/* LEADERBOARD SECTION */}
         <section id="leaderboard-section" className="max-w-4xl mx-auto space-y-8 scroll-mt-20">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-gold/20 rounded-full">
-              <Sparkles className="w-3 h-3 text-gold" />
+              <Sparkles className="w-3 h-3 text-gold animate-pulse" />
               <span className="text-[10px] text-gold font-bold">المنافسة الكبرى للأسياد والملوك</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">مجتمع الأسياد المتصدرين 👑</h3>
-            <p className="text-xs text-zinc-400">ملفاتهم الرقمية مع تيشيرتاتهم النادرة الأكثر تفاعلاً وإعجاباً في البراند</p>
+            <p className="text-xs text-stone-500">ملفاتهم الرقمية مع تيشيرتاتهم النادرة الأكثر تفاعلاً وإعجاباً في البراند</p>
           </div>
 
-          <div className="bg-zinc-950/40 border border-zinc-900 rounded-3xl p-6 md:p-8 space-y-8 relative overflow-hidden shadow-2xl backdrop-blur">
+          <div className="bg-white border border-stone-200 rounded-3xl p-6 md:p-8 space-y-8 relative overflow-hidden shadow-xl shadow-stone-100 backdrop-blur">
             {/* Ambient glows */}
             <div className="absolute top-10 left-1/2 -translate-x-1/2 w-64 h-64 bg-gold/5 blur-[80px] rounded-full pointer-events-none" />
 
             {loadingLeaderboard ? (
-              <div className="flex justify-center items-center py-12">
+              <div className="flex justify-center py-12">
                 <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               </div>
             ) : leaderboard.length === 0 ? (
-              <div className="text-center text-zinc-500 text-xs py-8">
+              <div className="text-center text-stone-500 text-xs py-8">
                 كن أوردر تيشيرت مذهب، تفعيل كود VIP لتتصدر لوحة الشرف! 🌟
               </div>
             ) : (
-              <div className="space-y-8">
-                {/* 3 Columns structure prioritizing 1st place in the middle */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-6">
+              <div className="space-y-8 bg-transparent">
+                {/* Podium top 3 grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                   {/* SECOND PLACE (Silver) */}
                   {leaderboard[1] && (
                     <motion.div 
                       whileHover={{ scale: 1.02 }}
-                      className="bg-black/40 border border-zinc-900 rounded-2xl p-5 text-center flex flex-col items-center justify-between min-h-[225px] relative order-2 md:order-1"
+                      className="bg-white border border-stone-200 rounded-2xl p-5 text-center flex flex-col items-center justify-between min-h-[225px] relative order-2 md:order-1 shadow-sm"
                     >
-                      <div className="absolute -top-4 bg-zinc-900 border border-zinc-500 rounded-full px-2.5 py-0.5 text-[9px] font-bold text-zinc-350 flex items-center gap-1 shadow">
+                      <div className="absolute -top-4 bg-stone-100 border border-stone-200 rounded-full px-2.5 py-0.5 text-[9px] font-bold text-stone-600 flex items-center gap-1 shadow-sm">
                         <span>الوصيف الثاني 🥈</span>
                       </div>
                       <div className="space-y-3 mt-2 flex flex-col items-center">
                         <img 
                           src={leaderboard[1].photoUrl} 
                           alt={leaderboard[1].displayName} 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-zinc-400/60 cursor-zoom-in hover:brightness-110 transition-all"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-stone-250 cursor-zoom-in hover:brightness-110 transition-all shadow-sm"
                           onClick={() => setFullscreenImage(leaderboard[1].photoUrl)}
                         />
                         <div>
-                          <h4 className="font-extrabold text-xs text-white">{leaderboard[1].displayName}</h4>
-                          <p className="text-[9px] text-zinc-500 font-mono">@{leaderboard[1].username}</p>
+                          <h4 className="font-extrabold text-xs text-stone-900">{leaderboard[1].displayName}</h4>
+                          <p className="text-[9px] text-stone-500 font-mono">@{leaderboard[1].username}</p>
                         </div>
-                        <p className="text-[10px] text-zinc-450 italic font-sans max-w-[180px] line-clamp-2">"{leaderboard[1].bio || 'بدون وصف'}"</p>
+                        <p className="text-[10px] text-stone-600 italic font-sans max-w-[180px] line-clamp-2">"${leaderboard[1].bio || 'بدون وصف'}"</p>
                       </div>
                       <div className="mt-4 w-full space-y-2">
-                        <div className="text-[11px] text-zinc-300 font-bold bg-zinc-900 px-3 py-1 rounded-lg inline-block">
-                          ❤️ {leaderboard[1].likes || 0} إعجاب فخم
+                        <div className="text-[11px] text-stone-700 font-bold bg-stone-50 border border-stone-200 px-3 py-1 rounded-lg inline-block">
+                          ❤️ ${leaderboard[1].likes || 0} إعجاب فخم
                         </div>
                         <button 
                           onClick={() => navigateTo(`/${leaderboard[1].username}`)}
-                          className="w-full py-1.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 text-[10px] font-bold rounded-lg cursor-pointer border border-zinc-800/80 transition-all text-center"
+                          className="w-full py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-800 text-[10px] font-bold rounded-lg cursor-pointer border border-stone-200 transition-all text-center"
                         >
                           زيارة ودعم الملف شخصي
                         </button>
                       </div>
                     </motion.div>
                   )}
-
+                  
+                  {/* FIRST PLACE (Gold) */}
                   {/* FIRST PLACE (Gold) */}
                   {leaderboard[0] && (
                     <motion.div 
                       whileHover={{ scale: 1.03 }}
-                      className="bg-zinc-950/90 border-2 border-gold rounded-2xl p-6 text-center flex flex-col items-center justify-between min-h-[255px] relative order-1 md:order-2 shadow-xl shadow-gold/5"
+                      className="bg-[#FCFAF4] border-2 border-gold rounded-2xl p-6 text-center flex flex-col items-center justify-between min-h-[255px] relative order-1 md:order-2 shadow-lg shadow-gold/5"
                     >
-                      <div className="absolute -top-5 bg-gold text-black rounded-full px-3 py-1 text-[10px] font-black tracking-wider flex items-center gap-1 shadow-lg shadow-gold/20 animate-bounce">
-                        <Crown className="w-3 h-3" />
+                      <div className="absolute -top-5 bg-stone-950 text-gold border border-gold/25 rounded-full px-3 py-1 text-[10px] font-black tracking-wider flex items-center gap-1 shadow-md animate-bounce">
+                        <Crown className="w-3 h-3 text-gold gold-glow" />
                         <span>سيّد الصدارة الملكي 🥇</span>
                       </div>
                       <div className="space-y-3 mt-2 flex flex-col items-center">
@@ -1743,10 +2073,10 @@ export default function App() {
                           onClick={() => setFullscreenImage(leaderboard[0].photoUrl)}
                         />
                         <div>
-                          <h4 className="font-black text-sm text-gold font-serif gold-gradient">{leaderboard[0].displayName}</h4>
-                          <p className="text-[9px] text-gold/80 font-mono">@{leaderboard[0].username}</p>
+                          <h4 className="font-black text-sm text-stone-950 font-serif gold-gradient">{leaderboard[0].displayName}</h4>
+                          <p className="text-[9px] text-[#A27B2B] font-mono">@{leaderboard[0].username}</p>
                         </div>
-                        <p className="text-[10px] text-zinc-350 italic font-sans max-w-[200px] line-clamp-2">"{leaderboard[0].bio || 'بدون وصف'}"</p>
+                        <p className="text-[10px] text-stone-700 italic font-sans max-w-[200px] line-clamp-2">"{leaderboard[0].bio || 'بدون وصف'}"</p>
                       </div>
                       <div className="mt-4 w-full space-y-2">
                         <div className="text-xs text-black font-black bg-gold px-4 py-1.5 rounded-lg inline-block shadow-sm">
@@ -1754,7 +2084,7 @@ export default function App() {
                         </div>
                         <button 
                           onClick={() => navigateTo(`/${leaderboard[0].username}`)}
-                          className="w-full py-2 bg-gold/10 hover:bg-gold/20 text-gold text-[10px] font-bold rounded-lg cursor-pointer border border-gold/30 transition-all text-center"
+                          className="w-full py-2 bg-stone-950 hover:bg-stone-900 text-white text-[10px] font-bold rounded-lg cursor-pointer transition-all text-center"
                         >
                           زيارة ودعم الملف شخصي
                         </button>
@@ -1766,31 +2096,31 @@ export default function App() {
                   {leaderboard[2] && (
                     <motion.div 
                       whileHover={{ scale: 1.02 }}
-                      className="bg-black/40 border border-zinc-900 rounded-2xl p-5 text-center flex flex-col items-center justify-between min-h-[225px] relative order-3"
+                      className="bg-white border border-stone-200 rounded-2xl p-5 text-center flex flex-col items-center justify-between min-h-[225px] relative order-3 shadow-sm"
                     >
-                      <div className="absolute -top-4 bg-zinc-900 border border-amber-800 rounded-full px-2.5 py-0.5 text-[9px] font-bold text-amber-500 flex items-center gap-1 shadow">
+                      <div className="absolute -top-4 bg-stone-100 border border-stone-200 rounded-full px-2.5 py-0.5 text-[9px] font-bold text-amber-700 flex items-center gap-1 shadow-sm">
                         <span>الوصيف الثالث 🥉</span>
                       </div>
                       <div className="space-y-3 mt-2 flex flex-col items-center">
                         <img 
                           src={leaderboard[2].photoUrl} 
                           alt={leaderboard[2].displayName} 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-amber-800/60 cursor-zoom-in hover:brightness-110 transition-all"
+                          className="w-16 h-16 rounded-full object-cover border-2 border-stone-250 cursor-zoom-in hover:brightness-110 transition-all shadow-sm"
                           onClick={() => setFullscreenImage(leaderboard[2].photoUrl)}
                         />
                         <div>
-                          <h4 className="font-extrabold text-xs text-white">{leaderboard[2].displayName}</h4>
-                          <p className="text-[9px] text-zinc-500 font-mono">@{leaderboard[2].username}</p>
+                          <h4 className="font-extrabold text-xs text-stone-900">{leaderboard[2].displayName}</h4>
+                          <p className="text-[9px] text-stone-500 font-mono">@{leaderboard[2].username}</p>
                         </div>
-                        <p className="text-[10px] text-zinc-450 italic font-sans max-w-[180px] line-clamp-2">"{leaderboard[2].bio || 'بدون وصف'}"</p>
+                        <p className="text-[10px] text-stone-600 italic font-sans max-w-[180px] line-clamp-2">"{leaderboard[2].bio || 'بدون وصف'}"</p>
                       </div>
                       <div className="mt-4 w-full space-y-2">
-                        <div className="text-[11px] text-zinc-300 font-bold bg-zinc-900 px-3 py-1 rounded-lg inline-block">
+                        <div className="text-[11px] text-stone-700 font-bold bg-stone-50 border border-stone-200 px-3 py-1 rounded-lg inline-block">
                           ❤️ {leaderboard[2].likes || 0} إعجاب فخم
                         </div>
                         <button 
                           onClick={() => navigateTo(`/${leaderboard[2].username}`)}
-                          className="w-full py-1.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 text-[10px] font-bold rounded-lg cursor-pointer border border-zinc-800/80 transition-all text-center"
+                          className="w-full py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-800 text-[10px] font-bold rounded-lg cursor-pointer border border-stone-200 transition-all text-center"
                         >
                           زيارة ودعم الملف شخصي
                         </button>
@@ -1800,12 +2130,12 @@ export default function App() {
                 </div>
 
                 {/* Total joined count stats banner */}
-                <div className="pt-6 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
+                <div className="pt-6 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
                   <div className="space-y-1 text-right">
-                    <p className="text-xs text-zinc-300">
+                    <p className="text-xs text-stone-800">
                       🔥 انضم إلينا حتى الآن <span className="text-gold font-extrabold font-mono text-sm">{totalJoinedCount}</span> من الملوك المتميزين في عائلة <span className="font-serif font-black gold-gradient bg-clip-text">إسمي ذهب</span> الفاخرة!
                     </p>
-                    <p className="text-[10px] text-zinc-500">
+                    <p className="text-[10px] text-stone-500">
                       شارك مع أصدقائك، واجعلهم يصوتون لملفك المذهب لترتقي درجات الصدارة وتعتلي منصة الملوك الرسمية!
                     </p>
                   </div>
@@ -1814,7 +2144,7 @@ export default function App() {
                       const target = document.getElementById('search-section');
                       target?.scrollIntoView({ behavior: 'smooth' });
                     }}
-                    className="px-5 py-2.5 bg-gold hover:bg-gold/90 text-black text-xs font-black rounded-xl transition-all shadow shadow-gold/15 cursor-pointer text-center"
+                    className="px-5 py-2.5 bg-stone-950 hover:bg-stone-900 text-white text-xs font-black rounded-xl transition-all shadow-sm"
                   >
                     شارك لتربح وتكون في الصدارة 🔥
                   </button>
@@ -1828,21 +2158,21 @@ export default function App() {
         <section className="max-w-4xl mx-auto space-y-8">
           <div className="text-center space-y-2">
             <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">ملحمة الأصدقاء والأسياد 🎬</h3>
-            <p className="text-xs text-zinc-400">شاركنا لحظات بريقك بالقطع المذهبة لتنالوا شهرة تليق بقيمتكم الرفيعة!</p>
+            <p className="text-xs text-stone-500">شاركنا لحظات بريقك بالقطع المذهبة لتنالوا شهرة تليق بقيمتكم الرفيعة!</p>
           </div>
 
           <div className="flex justify-center max-w-xl mx-auto">
             {/* Friends Video promo Card */}
-            <div className="w-full bg-zinc-950/40 border border-zinc-900 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative overflow-hidden backdrop-blur">
+            <div className="w-full bg-white border border-stone-200 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative overflow-hidden shadow-lg shadow-stone-100/50 backdrop-blur">
               <div className="absolute top-0 right-0 w-24 h-24 bg-gold/5 blur-2xl rounded-full" />
               
               <div className="space-y-4 text-right">
-                <div className="w-12 h-12 rounded-2xl bg-gold/10 border border-gold/30 flex items-center justify-center">
-                  <MessageSquare className="w-6 h-6 text-gold" />
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-gold/20 flex items-center justify-center">
+                  <MessageSquare className="w-6 h-6 text-[#A27B2B]" />
                 </div>
                 <div>
-                  <h4 className="font-black text-md text-white">هل صورت كود الهيبة لك ولأصدقائك؟ 🎥</h4>
-                  <p className="text-[10.5px] text-zinc-400 leading-relaxed mt-2.5">
+                  <h4 className="font-black text-md text-stone-900">هل صورت كود الهيبة لك ولأصدقائك؟ 🎥</h4>
+                  <p className="text-[10.5px] text-stone-600 leading-relaxed mt-2.5">
                     إذا كان لديك فيديو ممتع لك ولأصدقائك وأنتم ترتدون قطع "إسمي ذهب"، شاركه معنا الآن! سنقوم بنشره مباشرة على قنواتنا الرسمية ولوحة الشرف كأبطال حقيقيين لعلامة ESM الفاخرة لتنالوا شهرة تليق بقيمتكم الرفيعة.
                   </p>
                 </div>
@@ -1853,7 +2183,7 @@ export default function App() {
                   const messageText = 'أهلاً براند إسمي ذهب! لدي فيديو فخم لي ولأصدقائي نرتدي فيه التيشرت الذّهبي وأود مشاركته معكم لنشره على الصفحة الرئيسية!';
                   window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(messageText)}`, '_blank');
                 }}
-                className="w-full py-2.5 bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 rounded-xl cursor-pointer text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 bg-[#B89753]/10 hover:bg-[#B89753]/20 text-[#A27B2B] border border-[#B89753]/30 rounded-xl cursor-pointer text-xs font-black transition-all flex items-center justify-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>أرسل لقطتك الملكية عبر الواتساب</span>
@@ -1862,236 +2192,333 @@ export default function App() {
           </div>
         </section>
 
-        {/* PRICING PLANS SECTION */}
-        <section className="space-y-8">
-          <div className="text-center space-y-2">
-            <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">باقات الأسياد المتاحة</h3>
-            <p className="text-xs text-zinc-400">أسعار الكتالوج لامتلاك أرقى القطع الفنية في خزانة ملابسك</p>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {[
-              {
-                id: 'classic',
-                name: 'الباقة الكلاسيكية',
-                sub: 'العرض الفردي الأساسي',
-                price: configApp.classicPrice,
-                description: configApp.classicDescription,
-                colorClass: 'silver-gradient',
-                btnText: 'تصفح واطلب نسختك'
-              },
-              {
-                id: 'premium',
-                name: 'باقة التاج المذهب',
-                sub: 'هيبة الملوك والأسياد',
-                price: configApp.premiumPrice,
-                description: configApp.premiumDescription,
-                colorClass: 'gold-gradient',
-                btnText: 'تصفح واطلب نسختك'
-              },
-              {
-                id: 'duo',
-                name: 'عرض الكابلز الثنائي',
-                sub: 'عرض ترويجي استثنائي',
-                price: configApp.duoPrice,
-                description: configApp.duoDescription,
-                colorClass: 'silver-gradient',
-                btnText: 'اطلب العرض الثنائي'
-              }
-            ].map((pkg) => {
-              const isFocused = configApp.focusedProduct === pkg.id;
-              return (
-                <div 
-                  key={pkg.id}
-                  className={`bg-zinc-950 rounded-3xl p-6 text-center hover:shadow-2xl transition-all flex flex-col justify-between space-y-6 relative overflow-hidden ${
-                    isFocused 
-                      ? 'border-2 border-gold shadow-md shadow-gold/5 transform md:-translate-y-2' 
-                      : 'border border-zinc-900 hover:border-gold/20'
-                  }`}
-                >
-                  {isFocused && (
-                    <div className="absolute top-0 right-0 bg-gold text-black text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest animate-pulse">
-                      أحسن صفقة 🔥
-                    </div>
-                  )}
-                  
-                  <div className="space-y-3 pt-2">
-                    <span className={`text-[9px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-                      isFocused ? 'bg-gold/15 text-gold border border-gold/30 font-bold' : 'bg-zinc-900 text-zinc-400'
-                    }`}>
-                      {pkg.sub}
-                    </span>
-                    <h4 className={`text-sm sm:text-md font-bold font-serif ${isFocused ? 'gold-gradient font-black' : pkg.colorClass}`}>{pkg.name}</h4>
-                    <div className={`font-mono text-2xl font-black ${isFocused ? 'text-gold gold-glow' : 'text-white'}`}>
-                      {pkg.price} <span className="text-xs">EGP</span>
-                    </div>
-                    <p className="text-[10px] text-zinc-350 leading-relaxed font-sans whitespace-pre-line text-right mr-1 bg-black/40 p-4 rounded-2xl border border-zinc-900/50">
-                      {pkg.description}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      const target = document.getElementById('search-section');
-                      target?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className={`w-full py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
-                      isFocused 
-                        ? 'bg-gold text-black hover:bg-gold/90 shadow-lg shadow-gold/15' 
-                        : 'bg-zinc-900 hover:bg-zinc-805 hover:bg-zinc-800 text-white border border-zinc-800'
-                    }`}
-                  >
-                    {pkg.btnText}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
 
         {/* BRAND VALUES FEATURES */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-center py-6 max-w-2xl mx-auto">
-          <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
+          <div className="bg-white p-6 rounded-2xl border border-stone-200 space-y-3 shadow-sm">
             <Crown className="w-8 h-8 text-gold mx-auto" />
-            <h5 className="font-bold text-xs">طباعة وحفر DTF ملكي</h5>
-            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-405 text-zinc-400 leading-relaxed">طباعة أو حفر DTF عالي الدقة مش بخيوط مقاوم للغسيل المتكرر والحرارة.</p>
+            <h5 className="font-bold text-xs text-stone-900">طباعة وحفر DTF ملكي</h5>
+            <p className="text-[10px] text-stone-500 leading-relaxed">طباعة أو حفر DTF عالي الدقة مش بخيوط مقاوم للغسيل المتكرر والحرارة.</p>
           </div>
 
-          <div className="bg-zinc-950/40 p-6 rounded-2xl border border-zinc-900 space-y-3">
+          <div className="bg-white p-6 rounded-2xl border border-stone-200 space-y-3 shadow-sm">
             <Users className="w-8 h-8 text-gold mx-auto" />
-            <h5 className="font-bold text-xs">بوابة VIP المخصصة</h5>
-            <p className="text-[10px] text-zinc-550 text-zinc-450 text-zinc-405 text-zinc-400 leading-relaxed">الملف التعريفي الملكي يعبر عن مدى تميزك بمشترياتك الحصرية.</p>
+            <h5 className="font-bold text-xs text-stone-900">بوابة VIP المخصصة</h5>
+            <p className="text-[10px] text-stone-500 leading-relaxed">الملف التعريفي الملكي يعبر عن مدى تميزك بمشترياتك الحصرية.</p>
           </div>
         </section>
 
         {/* NATIVE SEMANTIC SEO FAQ SECTION */}
-        <section id="faq-section" className="max-w-4xl mx-auto space-y-8 py-8 border-t border-zinc-900">
+        <section id="faq-section" className="max-w-4xl mx-auto space-y-8 py-8 border-t border-stone-200">
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1 bg-gold/15 border border-gold/20 px-3 py-1 rounded-full text-gold text-[10px] font-extrabold">
+            <div className="inline-flex items-center gap-1 bg-amber-500/10 border border-gold/20 px-3 py-1 rounded-full text-[#A27B2B] text-[10px] font-extrabold">
               <HelpCircle className="w-3.5 h-3.5" />
               <span>دليل تفاصيل الفخامة والمعلومات</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-black font-serif gold-gradient">الأسئلة الشائعة لبراند إسمي ذهب 👑</h3>
-            <p className="text-xs text-zinc-450 text-zinc-400 leading-relaxed">تفاصيل حصرية عن تيشرتات الأوفرسايز بالاسم، خامات القطن المصري والضمان الفضي</p>
+            <p className="text-xs text-stone-500 leading-relaxed">تفاصيل حصرية عن تيشرتات الأوفرسايز بالاسم، خامات القطن المصري والضمان الفضي</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
-            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+            <details className="group bg-white border border-stone-200 hover:border-gold/30 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden shadow-sm">
+              <summary className="flex items-center justify-between text-xs font-black text-stone-900 hover:text-gold list-none">
                 <span className="flex items-center gap-2">
                   <span className="text-gold text-sm">✦</span>
                   <span>ما هي جودة خامات تيشرتات "إسمي ذهب"؟</span>
                 </span>
-                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs font-bold">▼</span>
               </summary>
-              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+              <p className="text-[11px] text-stone-600 mt-3 leading-relaxed font-sans border-t border-stone-100 pt-3">
                 جميع منتجاتنا تعتمد على <strong>القطن المصري 100%</strong> الطويل التيلة الفاخر وثقيل الوزن بوزن يتعدى الـ 280 جرام ليعطي ذلك المظهر الأوفرسايز (One Size Oversized) الأنيق والقصة الفخمة المريحة والمنسدلة بشكل ملكي وجذاب يناسب كافة الهيئات للشباب والبنات.
               </p>
             </details>
 
-            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+            <details className="group bg-white border border-stone-200 hover:border-gold/30 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden shadow-sm">
+              <summary className="flex items-center justify-between text-xs font-black text-stone-900 hover:text-gold list-none">
                 <span className="flex items-center gap-2">
                   <span className="text-gold text-sm">✦</span>
                   <span>هل طباعة الاسم وتطريز التاج المذهب مقاومة للغسيل؟</span>
                 </span>
-                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs font-bold">▼</span>
               </summary>
-              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+              <p className="text-[11px] text-stone-600 mt-3 leading-relaxed font-sans border-t border-stone-100 pt-3">
                 نعم بكل فخر! نحن نستخدم أحدث خوارزميات وتقنيات <strong>الحفر الحراري والطباعة DTF الدقيقة ثلاثية الأبعاد</strong> مع خيوط نسيجية لامعة متراكبة مع البج المذهب والتاج الملكي. هذه الخامة مصنوعة بعناية لتقاوم التآكل والحرارة والكي والغسيل بمعدل استدامة مذهل.
               </p>
             </details>
 
-            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+            <details className="group bg-white border border-stone-200 hover:border-gold/30 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden shadow-sm">
+              <summary className="flex items-center justify-between text-xs font-black text-stone-900 hover:text-gold list-none">
                 <span className="flex items-center gap-2">
                   <span className="text-gold text-sm">✦</span>
                   <span>مش لاقي اسمي.. كيف أصمم خط ذهبي مخصص باسمي؟</span>
                 </span>
-                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs font-bold">▼</span>
               </summary>
-              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+              <p className="text-[11px] text-stone-600 mt-3 leading-relaxed font-sans border-t border-stone-100 pt-3">
                 الأمر غاية في البساطة! إذا لم يكن اسمك مدرجاً في الكتالوج الجاهز، فقط اضغط على زر <strong>"لو عايز تصميم باسمك اضغط هنا"</strong> واملأ استمارة تخصيص الاسم بالدولة الخاصة بك (بالعربية أو الإنجليزية) وسيقوم فريق المصممين والخطاطين الملكي لدينا بتطريز وبرمجة خط مخصص لاسمك فوراً دون أي رسوم تصميم إضافية!
               </p>
             </details>
 
-            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+            <details className="group bg-white border border-stone-200 hover:border-gold/30 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden shadow-sm">
+              <summary className="flex items-center justify-between text-xs font-black text-stone-900 hover:text-gold list-none">
                 <span className="flex items-center gap-2">
                   <span className="text-gold text-sm">✦</span>
                   <span>كم يستغرق تفصيل وتوصيل التيشيرت المذهب؟</span>
                 </span>
-                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs font-bold">▼</span>
               </summary>
-              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+              <p className="text-[11px] text-stone-600 mt-3 leading-relaxed font-sans border-t border-stone-100 pt-3">
                 لأننا نتعامل مع كل قطعة كجزء فني نادر، تتراوح عملية التفصيل والحياكة الخاصة والطباعة من 24 إلى 48 ساعة، ثم يتم تعبئتها بعناية راقية وتغليف ملكي فاخر، وتوصيلها وشحنها عبر <strong>بوابات الشحن السريع</strong> لكافة محافظات مصر والمجتمعات لتصلك في غضون 3 إلى 5 أيام عمل فقط.
               </p>
             </details>
 
-            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
+            <details className="group bg-white border border-stone-200 hover:border-gold/30 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden shadow-sm">
+              <summary className="flex items-center justify-between text-xs font-black text-stone-900 hover:text-gold list-none">
                 <span className="flex items-center gap-2">
                   <span className="text-gold text-sm">✦</span>
                   <span>ما هي بوابة VIP الملكية ومجتمع الأسياد المتصدرين؟</span>
                 </span>
-                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
+                <span className="text-gold transition-transform group-open:rotate-180 text-xs font-bold">▼</span>
               </summary>
-              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
+              <p className="text-[11px] text-stone-600 mt-3 leading-relaxed font-sans border-t border-stone-100 pt-3">
                 تعد <strong>بوابة VIP المخصصة</strong> مجتمعاً فريداً لعملاء البراند الحقيقيين. مع طلبيتك، ستحصل يدوياً على كود نفاذ تفعيلي ملكي (مثل ESM-VIP) يفتح لك حساباً رقمياً فخماً بالاسم والصورة الشخصية على موقعنا. يمكنك مشاركته وجمع ترشيحات وتصويتات من العائلة لترتقي درجات الصدارة وتثبت ملكيتك لأرقى براند ملابس بالاسم في مصر والعالم العربي!
               </p>
             </details>
 
-            <details className="group bg-zinc-950/50 border border-zinc-900 hover:border-gold/20 rounded-2xl p-4 transition-all duration-350 cursor-pointer [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex items-center justify-between text-xs font-black text-white hover:text-gold list-none">
-                <span className="flex items-center gap-2">
-                  <span className="text-gold text-sm">✦</span>
-                  <span>ما هي سياسة الاسترجاع والضمان الملكية؟</span>
-                </span>
-                <span className="text-gold transition-transform group-open:rotate-180 text-xs">▼</span>
-              </summary>
-              <p className="text-[11px] text-zinc-400 mt-3 leading-relaxed font-sans border-t border-zinc-900 pt-3">
-                في براند <strong>إسمي ذهب</strong>، نوفر ضماناً ملكياً حقيقياً مدته 14 يوماً كاملة لكامل حقوق العميل. إذا وجد أي عيب تصنيعي أو خطأ في تطريز خط الاسم المذهب من قبلنا، نتكفل بتبديل القطعة فوراً وإحضار قطعة جديدة تناسب هيبتك الفخمة دون تكبد أي مصاريف إضافية على الإطلاق.
-              </p>
-            </details>
+
           </div>
         </section>
 
       </main>
 
       {/* FOOTER & EXCLUSIVITIES */}
-      <footer className="border-t border-zinc-900 bg-zinc-950/80 py-8 relative z-10">
+      <footer className="border-t border-stone-200 bg-stone-50 py-8 relative z-10">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-right">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 align-right">
             <div className="flex items-center gap-1.5 justify-center md:justify-start">
               <Crown className="w-5 h-5 text-gold" />
               <span className="font-serif font-black tracking-wider text-sm gold-gradient">ESM • إسمي ذهب</span>
             </div>
-            <p className="text-[10px] text-zinc-500">العنوان الفني لصناعة الألبسة المذهبة الراقية بالخط العربي والتاج.</p>
+            <p className="text-[10px] text-stone-500">العنوان الفني لصناعة الألبسة المذهبة الراقية بالخط العربي والتاج الملكي.</p>
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center">
             <button 
               onClick={() => setIsPolicyOpen(true)}
-              className="text-[11px] font-bold text-zinc-400 hover:text-gold transition-colors cursor-pointer"
+              className="text-[11px] font-bold text-stone-650 hover:text-gold transition-colors cursor-pointer"
             >
               سياسة الاسترجاع والضمان الملكي 📖
             </button>
             <button 
               onClick={() => navigateTo('/apps')}
-              className="text-[11px] font-bold text-zinc-400 hover:text-gold transition-colors cursor-pointer"
+              className="text-[11px] font-bold text-stone-650 hover:text-gold transition-colors cursor-pointer"
             >
               بوابة VIP الملكية 👑
             </button>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 text-center text-[10px] text-zinc-600 mt-6 pt-4 border-t border-zinc-900/50">
+        <div className="max-w-7xl mx-auto px-4 text-center text-[10px] text-stone-400 mt-6 pt-4 border-t border-stone-200">
           <p>© جميع الحقوق محفوظة لبراند الأسياد الملكي إسمي ذهب • 2026</p>
         </div>
       </footer>
 
       {/* RETURN POLICY MODAL POPUP */}
       <ReturnPolicy isOpen={isPolicyOpen} onClose={() => setIsPolicyOpen(false)} />
+
+      {/* UNIFIED CHECKOUT MODAL */}
+      <AnimatePresence>
+        {checkoutProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 z-[190] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto"
+            onClick={() => setCheckoutProduct(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white border border-stone-200 rounded-3xl w-full max-w-lg p-6 md:p-8 space-y-6 relative shadow-2xl text-right overflow-y-auto max-h-[90vh] my-4 scrollbar-thin"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setCheckoutProduct(null)}
+                className="absolute top-4 left-4 text-stone-400 hover:text-stone-900 bg-stone-50 hover:bg-stone-100 p-2 rounded-full cursor-pointer transition-all border border-stone-200 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {checkoutSuccess ? (
+                <div className="space-y-6 py-4 text-center">
+                  <div className="w-16 h-16 bg-amber-500/10 border border-gold/20 text-gold rounded-full flex items-center justify-center mx-auto">
+                    <Check className="w-8 h-8 text-gold" strokeWidth={3} />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-black font-serif gold-gradient">لقد بدأت هيبتك بالتأكيد! 👑</h3>
+                    <p className="text-xs text-stone-600 max-w-sm mx-auto leading-relaxed">
+                      تم تسجيل أوردر تفصيل وتجهيز منتجك <strong>({checkoutProduct.name})</strong> بنجاح فخم وتمريره لغرفة الإدارة بالتليغرام الخاص بنا!
+                    </p>
+                    <p className="text-[10.5px] text-amber-700 font-bold bg-amber-500/5 py-1 px-3 rounded-full inline-block mt-2">
+                      لا حاجة لتكرار الطلب، فريق الخطاطين يباشر تفصيل القطعة الآن!
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-stone-100 space-y-3">
+                    <p className="text-[11px] text-stone-500">للاستفسار السريع بخصوص المقاسات أو التعديل، تفضل بزيارتنا فوراً:</p>
+                    <button
+                      onClick={() => {
+                        const messageText = `أهلاً براند إسمي ذهب 👑\n\nلقد قمت للتو بطلب القطعة الملكية عبر الموقع:\n- المنتج/الباقة: ${checkoutProduct.name}\n- الاسم الخاص بي: ${checkoutName}\n- المقاس المختار: ${checkoutSize}\n\nبرجاء موافاتنا بالتأكيد النهائي للبدء ⚡`;
+                        window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(messageText)}`, '_blank');
+                      }}
+                      className="w-full py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <MessageSquare className="w-4 h-4 fill-white text-[#25D366]" />
+                      <span>تواصل مباشر واتساب للدعم الملكي</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setCheckoutProduct(null)}
+                      className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl cursor-pointer transition-all text-center"
+                    >
+                      إغلاق والعودة للمعرض
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleCheckoutSubmit} className="space-y-5">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1 bg-amber-500/10 px-2.5 py-0.5 rounded-full text-gold text-[9px] font-bold">
+                      <Crown className="w-2.5 h-2.5" />
+                      <span>بيانات أوردر الشراء الفاخر</span>
+                    </div>
+                    <h3 className="text-md sm:text-lg font-black text-stone-900 leading-relaxed font-serif">حجز وتفصيل: {checkoutProduct.name}</h3>
+                    {checkoutProduct.price && (
+                      <p className="text-xs text-gold font-bold">المبلغ للامتلاك: {checkoutProduct.price} ج.م</p>
+                    )}
+                  </div>
+
+                  {/* CUSTOMER NAME */}
+                  <div className="space-y-1">
+                    <label className="block text-stone-700 font-bold text-[10px] mr-1">الاسم الكامل للمستلم 👤</label>
+                    <input
+                      type="text"
+                      required
+                      value={checkoutName}
+                      onChange={(e) => setCheckoutName(e.target.value)}
+                      placeholder="امش معنا باسمك الملكي الكامل..."
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold text-right"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* PHONE */}
+                    <div className="space-y-1">
+                      <label className="block text-stone-700 font-bold text-[10px] mr-1">رقم تواصل واتساب 📱</label>
+                      <input
+                        type="tel"
+                        required
+                        value={checkoutPhone}
+                        onChange={(e) => setCheckoutPhone(e.target.value)}
+                        placeholder="مثال: 01223043867"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold"
+                        style={{ direction: 'ltr' }}
+                      />
+                    </div>
+
+                    {/* OPTIONAL CALL PHONE */}
+                    <div className="space-y-1">
+                      <label className="block text-stone-700 font-bold text-[10px] mr-1 flex items-center justify-between">
+                        <span>رقم هاتف إضافي (مكالمات) 📞</span>
+                        <span className="text-[8px] text-stone-400 font-normal">اختياري للتوصيل</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={checkoutAltPhone}
+                        onChange={(e) => setCheckoutAltPhone(e.target.value)}
+                        placeholder="رقم آخر لاستقبال مكالمات المندوب"
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold"
+                        style={{ direction: 'ltr' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* SHIPPING ADDRESS */}
+                  <div className="space-y-1">
+                    <label className="block text-stone-700 font-bold text-[10px] mr-1">عنوان الشحن والتوصيل بالتفصيل 📍</label>
+                    <textarea
+                      required
+                      rows={2}
+                      value={checkoutAddress}
+                      onChange={(e) => setCheckoutAddress(e.target.value)}
+                      placeholder="المحافظة، المدينة، اسم الشارع، رقم العمارة والدور..."
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold text-right"
+                    />
+                  </div>
+
+                  {/* SIZES RADIOS ROW */}
+                  <div className="space-y-2">
+                    <label className="block text-stone-700 font-bold text-[10px] mr-1 text-right">
+                      اختر المقاس المتاح للقطعة 📏
+                    </label>
+                    <div className="flex flex-wrap gap-2 justify-start md:justify-end" style={{ direction: 'ltr' }}>
+                      {(checkoutProduct.availableSizes && checkoutProduct.availableSizes.length > 0
+                        ? checkoutProduct.availableSizes
+                        : ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+                      ).map((sz: string) => (
+                        <button
+                          key={sz}
+                          type="button"
+                          onClick={() => setCheckoutSize(sz)}
+                          className={`min-w-10 h-10 px-3.5 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer border ${
+                            checkoutSize === sz
+                              ? 'bg-[#B89753] text-white border-gold shadow-md'
+                              : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
+                          }`}
+                        >
+                          {sz}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[9px] text-stone-400 text-right mt-1 font-sans">
+                      * يرجى العلم بأنك تتحمل المسؤولية الكاملة عن اختيار المقاس، وننصح بطلب مقاسك المعتاد.
+                    </p>
+                  </div>
+
+                  {/* ADDITIONAL NOTES */}
+                  <div className="space-y-1">
+                    <label className="block text-stone-700 font-bold text-[10px] mr-1">ملاحظات، ألوان الكتابة، أو الاسم المطلوب حياكته 🎨</label>
+                    <input
+                      type="text"
+                      value={checkoutNotes}
+                      onChange={(e) => setCheckoutNotes(e.target.value)}
+                      placeholder="اكتب الاسم المطلوب تطريزه بالخط العربي، أو أي مواصفات للشحن..."
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold text-right"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={checkoutSubmitting}
+                    className="w-full py-2.5 bg-stone-950 hover:bg-stone-900 text-white text-xs font-black rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-neutral-900/10"
+                  >
+                    {checkoutSubmitting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Crown className="w-4 h-4 text-gold" strokeWidth={2.5} />
+                        <span>تأكيد وإرسال طلب الحجز الفوري</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* FULLSCREEN IMAGE VIEWER MODAL */}
       <AnimatePresence>
@@ -2126,14 +2553,27 @@ export default function App() {
               <img
                 src={fullscreenImage}
                 alt="Fullscreen Premium Wearable Design"
-                className="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl border border-zinc-900 shadow-gold/5"
+                className="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl border border-zinc-950 shadow-gold/5"
                 referrerPolicy="no-referrer"
               />
-              <span className="text-[10px] text-zinc-500 mt-3 font-mono text-center">انقر في أي مكان خارج الصورة أو الزر للعودة</span>
+              <span className="text-[10px] text-stone-400 mt-2 font-mono text-center">انقر في أي مكان خارج الصورة أو الزر للعودة</span>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* FLOATING WHATSAPP BUTTON */}
+      <div id="floating-whatsapp-trigger" className="fixed bottom-6 left-6 z-40">
+        <a
+          href={`https://wa.me/${configApp.whatsappNumber}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="تواصل مباشر واتساب"
+          className="w-12 h-12 flex items-center justify-center bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full shadow-2xl shadow-green-500/30 hover:scale-110 transition-all cursor-pointer border border-green-400"
+        >
+          <MessageSquare className="w-5 h-5 fill-white text-[#25D366]" />
+        </a>
+      </div>
     </div>
   );
 }
