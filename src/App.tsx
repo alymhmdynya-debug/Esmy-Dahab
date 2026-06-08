@@ -258,17 +258,14 @@ export default function App() {
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkoutProduct) return;
-    if (!checkoutName.trim()) {
-      alert('يرجى كتابة الاسم بالكامل للتسجيل الفاخر للطلب!');
-      return;
-    }
     if (checkoutProduct.isDuo) {
       if (!checkoutName1.trim() || !checkoutName2.trim()) {
         alert('يرجى كتابة الاسمين المطلوبين للتطريز الثنائي!');
         return;
       }
-      if (!checkoutSize2) {
-        alert('يرجى اختيار مقاس القطعة الثانية!');
+    } else {
+      if (!checkoutName.trim()) {
+        alert('يرجى كتابة الاسم بالكامل للتسجيل الفاخر للطلب!');
         return;
       }
     }
@@ -280,7 +277,7 @@ export default function App() {
       alert('يرجى ملء عنوان التوصيل بالتفصيل لتجنب تأخر الشحنة!');
       return;
     }
-    if (!checkoutSize) {
+    if (!checkoutProduct.isDuo && !checkoutSize) {
       alert('يرجى اختيار مقاس من المقاسات المتاحة للطلب!');
       return;
     }
@@ -292,11 +289,11 @@ export default function App() {
       const finalFabric = isCustomProduct ? 'Premium' : 'Classic';
 
       const finalName = checkoutProduct.isDuo
-        ? `المستلم: ${checkoutName.trim()} | الأسماء الثنائية: ${checkoutName1.trim()} & ${checkoutName2.trim()}`
+        ? `طلب كابلز بالأسماء الثنائية: ${checkoutName1.trim()} & ${checkoutName2.trim()}`
         : `${checkoutName.trim()} - طلب: ${checkoutProduct.name}`;
 
       const finalSize = checkoutProduct.isDuo
-        ? `الأول: ${checkoutSize} | الثاني: ${checkoutSize2}`
+        ? `ثنائي (الافتراضي L & XL - وسيتم تأكيده بالواتساب)`
         : checkoutSize;
 
       const orderData: Order = {
@@ -320,13 +317,12 @@ export default function App() {
       // Trigger Telegram notification
       const telegramText = checkoutProduct.isDuo
         ? `👥 <b>أوردر كابلز/ثنائي جديد تم تسجيله بالموقع! 🎉</b>\n\n` +
-          `👤 <b>الاسم للمستلم:</b> ${checkoutName.trim()}\n` +
           `👩‍❤️‍👨 <b>تفاصيل التطريز الثنائي:</b> الاسم الأول (<code>${checkoutName1.trim()}</code>) والاسم الثاني (<code>${checkoutName2.trim()}</code>)\n` +
-          `📏 <b>المقاسات المحددة:</b> الأول (<code>${checkoutSize}</code>) | الثاني (<code>${checkoutSize2}</code>)\n` +
+          `📏 <b>المقاسات:</b> الافتراضي L & XL (سيتم تأكيده وتعديله عبر خدمة العملاء بالواتساب ⚡)\n` +
           `📱 <b>الواتس:</b> <code>${checkoutPhone.trim()}</code>\n` +
           `📞 <b>هاتف بديل (اختياري):</b> ${checkoutAltPhone.trim() || 'لا يوجد'}\n` +
           `📍 <b>العنوان بالتفصيل:</b> ${checkoutAddress.trim()}\n` +
-          `🎨 <b>اللون المختار:</b> <code>${checkoutColor || 'غير محدد'}</code>\n` +
+          `🎨 <b>الألوان:</b> سيتم التحديد بالكامل عبر الواتساب (أسود بشكل افتراضي) ⚡\n` +
           `👕 <b>نوع وخيار المنتج:</b> ${checkoutProduct.name}\n` +
           `🛑 <b>ملاحظات إضافية:</b> ${checkoutNotes.trim() || 'لا يوجد'}\n` +
           `🆔 <b>كود الأوردر:</b> <code>${orderId}</code>`
@@ -1103,7 +1099,8 @@ export default function App() {
         { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
       ];
       
-      const availableTypes = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
+      const availableTypes = (configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes)
+        .filter((t: any) => t.id !== 'duo' && t.id !== 'classic_duo' && t.id !== 'premium_duo');
       const selectedType = availableTypes.find(t => t.id === customFabric || t.name === customFabric) || availableTypes[0];
       const finalFabricName = selectedType.name;
 
@@ -1376,18 +1373,14 @@ export default function App() {
               className="w-full max-w-md bg-white border border-stone-200 p-8 rounded-3xl shadow-xl text-center backdrop-blur-md relative space-y-6"
             >
               {/* Profile Image card */}
-              <div className="relative inline-block mx-auto">
-                <img 
-                  src={publicProfile.photoUrl} 
-                  alt={publicProfile.displayName} 
-                  className="w-28 h-28 rounded-full object-cover border-4 border-gold mx-auto shadow-md cursor-zoom-in hover:brightness-110 transition-all"
+              <div className="flex justify-center">
+                <ProfileAvatar 
+                  photoUrl={publicProfile.photoUrl} 
+                  name={publicProfile.displayName} 
+                  level={publicProfile.level || 1}
+                  sizeClass="w-28 h-28" 
                   onClick={() => setFullscreenImage(publicProfile.photoUrl)}
                 />
-                {publicProfile.level === 3 && (
-                  <div className="absolute top-0 right-0 bg-white border border-gold rounded-full p-2 shadow-lg shadow-gold/10">
-                    <Crown className="w-6 h-6 text-gold gold-glow" />
-                  </div>
-                )}
               </div>
 
               {/* Badges, Names and Bio (Combined as Child 2) */}
@@ -1724,28 +1717,46 @@ export default function App() {
           </AnimatePresence>
 
           {/* Custom Royal Order Toggle & Form */}
-          <div className="pt-4 border-t border-stone-100 flex flex-col items-center gap-3">
-            <p className="text-[11px] text-stone-500 text-center">مش لاقي اسمك في كتالوج تصاميم الأسياد؟ لا تقلق!</p>
-            <button
-              type="button"
-              id="toggle-custom-form-btn"
-              onClick={() => {
-                setShowCustomOrderForm(!showCustomOrderForm);
-                if (!customFabric) {
-                  const defaultTypes = [
-                     { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
-                     { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
-                     { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
-                  ];
-                  const available = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
-                  setCustomFabric(available[0].id || available[0].name);
-                }
-              }}
-              className="px-4 py-2 bg-amber-500/10 border border-[#B89753]/30 hover:border-[#B89753] rounded-full text-[11px] font-extrabold tracking-wide text-[#A27B2B] cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-gold gold-glow animate-pulse" />
-              <span>{showCustomOrderForm ? 'إغلاق فورم الطلب الخاص ❌' : 'لو عايز تصميم باسمك اضغط هنا 👑'}</span>
-            </button>
+          <div className="pt-8 border-t border-stone-150 flex flex-col items-center w-full">
+            <div className="w-full max-w-2xl bg-gradient-to-br from-[#1C1917] via-[#292524] to-[#1C1917] text-white p-6 rounded-3xl border border-gold/35 shadow-2xl relative overflow-hidden text-center space-y-4">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#BF953F]/10 blur-3xl rounded-full pointer-events-none" />
+              <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gold/10 blur-2xl rounded-full pointer-events-none" />
+              
+              <div className="flex flex-col items-center gap-2">
+                <span className="bg-amber-500/10 border border-gold/30 text-gold text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider">
+                  ✨ طلب تفصيل مخصوص بالاسم والتاج
+                </span>
+                <h3 className="text-base sm:text-lg font-black font-serif gold-gradient">تريد تفصيل قطعة مخصوصة مخصصة باسمك؟ 👑</h3>
+                <p className="text-[10px] text-stone-300 max-w-md leading-relaxed font-semibold">
+                  إذا لم تجد اسمك مسجلاً في الكتالوج، يرجى النقر هنا لملء استمارة التفصيل الفوري، وسيقوم المصنع والخياط وتطريز التاج بالتفصيل المباشر باسمك وهيبتك الفخمة!
+                </p>
+              </div>
+              
+              <button
+                type="button"
+                id="toggle-custom-form-btn"
+                onClick={() => {
+                  setShowCustomOrderForm(!showCustomOrderForm);
+                  if (!customFabric) {
+                    const defaultTypes = [
+                       { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+                       { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 }
+                    ];
+                    const available = (configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes)
+                      .filter((t: any) => t.id !== 'duo' && t.id !== 'classic_duo' && t.id !== 'premium_duo');
+                    setCustomFabric(available[0]?.id || available[0]?.name || 'premium');
+                  }
+                }}
+                className={`w-full max-w-xs mx-auto py-3 px-6 rounded-2xl text-xs font-black transition-all duration-300 flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
+                  showCustomOrderForm
+                    ? 'bg-red-500 hover:bg-red-600 text-white border border-red-400'
+                    : 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B89753] hover:brightness-110 text-stone-950 font-serif active:scale-95 border border-gold/20'
+                }`}
+              >
+                <Sparkles className={`w-4 h-4 ${showCustomOrderForm ? 'text-white' : 'text-stone-950'} animate-pulse`} />
+                <span>{showCustomOrderForm ? 'إغلاق استمارة الطلب المخصوص ❌' : 'اضغط هنا لفتح استمارة التخصيص والطلب 👑'}</span>
+              </button>
+            </div>
           </div>
 
           <AnimatePresence>
@@ -1793,7 +1804,9 @@ export default function App() {
                       </div>
 
                       <div>
-                        <label className="block text-stone-500 text-[10px] font-semibold mb-1 mr-1">الاسم بالإنجليزية (اختياري) 🔠</label>
+                        <label className="block text-stone-500 text-[10px] font-semibold mb-1 mr-1">
+                          الاسم بالإنجليزية <span className="text-amber-700 font-bold">(اختياري للبريميوم فقط)</span> 🔠
+                        </label>
                         <input
                           type="text"
                           value={customNameEn}
@@ -1801,6 +1814,9 @@ export default function App() {
                           placeholder="مثلاً: Joseph or Mary"
                           className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold text-right"
                         />
+                        <span className="text-[9px] text-stone-500 block mt-1 mr-1 leading-relaxed">
+                          * اختياري. يكتب بالإنجليزية على شريط الظهر أو الكم في باقة البريميوم فقط. باقة كلاسيك لا تحتوي على شريط فلا تحتاج معها لكتابة الاسم بالإنجليزي.
+                        </span>
                       </div>
                     </div>
 
@@ -1827,9 +1843,8 @@ export default function App() {
                         >
                           {(configApp.types && configApp.types.length > 0 ? configApp.types : [
                             { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
-                            { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
-                            { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
-                          ]).map((t) => (
+                            { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 }
+                          ]).filter((t: any) => t.id !== 'duo' && t.id !== 'classic_duo' && t.id !== 'premium_duo').map((t) => (
                             <option key={t.id} value={t.id}>{t.name}</option>
                           ))}
                         </select>
@@ -1842,7 +1857,7 @@ export default function App() {
                         rows={2}
                         value={customNotes}
                         onChange={(e) => setCustomNotes(e.target.value)}
-                        placeholder="اكتب هنا المقاس المطلوب (مثل XL أو Oversized) وأي ألوان خيوط ترغب في تفضيلها..."
+                        placeholder="اكتب هنا أي تعديلات خاصة أو طلبات مخصصة (المقاسات والألوان يتم تحديدها بالكامل وتأكيدها معك بالواتساب. اللون الافتراضي للتفصيل المخصص هو الأسود الفاخر، وفي حال توفر ألوان أخرى متاحة سيتم إعلامك بها وتنسيقها معك بالكامل قبل التنفيذ)..."
                         className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold text-right"
                       />
                     </div>
@@ -1851,11 +1866,11 @@ export default function App() {
                     {(() => {
                       const defaultTypes = [
                         { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
-                        { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
-                        { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+                        { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 }
                       ];
-                      const available = configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes;
-                      const selected = available.find(t => t.id === customFabric || t.name === customFabric) || available[0];
+                      const available = (configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes)
+                        .filter((t: any) => t.id !== 'duo' && t.id !== 'classic_duo' && t.id !== 'premium_duo');
+                      const selected = available.find((t: any) => t.id === customFabric || t.name === customFabric) || available[0];
                       return selected ? (
                         <div className="bg-stone-100 border border-stone-200 p-3 rounded-2xl text-center space-y-0.5">
                           <span className="text-[10px] text-stone-500 block">مواصفات وسعر هذه الخامة المحددة:</span>
@@ -2301,10 +2316,11 @@ export default function App() {
                         <span>الوصيف الثاني 🥈</span>
                       </div>
                       <div className="space-y-3 mt-2 flex flex-col items-center">
-                        <img 
-                          src={leaderboard[1].photoUrl} 
-                          alt={leaderboard[1].displayName} 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-stone-250 cursor-zoom-in hover:brightness-110 transition-all shadow-sm"
+                        <ProfileAvatar 
+                          photoUrl={leaderboard[1].photoUrl} 
+                          name={leaderboard[1].displayName} 
+                          level={leaderboard[1].level || 2} 
+                          sizeClass="w-16 h-16" 
                           onClick={() => setFullscreenImage(leaderboard[1].photoUrl)}
                         />
                         <div>
@@ -2339,10 +2355,11 @@ export default function App() {
                         <span>سيّد الصدارة الملكي 🥇</span>
                       </div>
                       <div className="space-y-3 mt-2 flex flex-col items-center">
-                        <img 
-                          src={leaderboard[0].photoUrl} 
-                          alt={leaderboard[0].displayName} 
-                          className="w-20 h-20 rounded-full object-cover border-2 border-gold shadow-md cursor-zoom-in hover:brightness-110 transition-all"
+                        <ProfileAvatar 
+                          photoUrl={leaderboard[0].photoUrl} 
+                          name={leaderboard[0].displayName} 
+                          level={leaderboard[0].level || 3} 
+                          sizeClass="w-20 h-20" 
                           onClick={() => setFullscreenImage(leaderboard[0].photoUrl)}
                         />
                         <div>
@@ -2375,10 +2392,11 @@ export default function App() {
                         <span>الوصيف الثالث 🥉</span>
                       </div>
                       <div className="space-y-3 mt-2 flex flex-col items-center">
-                        <img 
-                          src={leaderboard[2].photoUrl} 
-                          alt={leaderboard[2].displayName} 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-stone-250 cursor-zoom-in hover:brightness-110 transition-all shadow-sm"
+                        <ProfileAvatar 
+                          photoUrl={leaderboard[2].photoUrl} 
+                          name={leaderboard[2].displayName} 
+                          level={leaderboard[2].level || 1} 
+                          sizeClass="w-16 h-16" 
                           onClick={() => setFullscreenImage(leaderboard[2].photoUrl)}
                         />
                         <div>
@@ -2643,7 +2661,9 @@ export default function App() {
                     <p className="text-[11px] text-stone-500">للاستفسار السريع بخصوص المقاسات أو التعديل، تفضل بزيارتنا فوراً:</p>
                     <button
                       onClick={() => {
-                        const messageText = `أهلاً براند إسمي ذهب 👑\n\nلقد قمت للتو بطلب القطعة الملكية عبر الموقع:\n- المنتج/الباقة: ${checkoutProduct.name}\n- الاسم الخاص بي: ${checkoutName}\n- المقاس المختار: ${checkoutSize}\n\nبرجاء موافاتنا بالتأكيد النهائي للبدء ⚡`;
+                        const messageText = checkoutProduct.isDuo
+                          ? `أهلاً براند إسمي ذهب 👑\n\nلقد قمت للتو بطلب باقة الكابلز الثنائية عبر الموقع:\n- العرض المختار: ${checkoutProduct.name}\n- تفاصيل تطريز الكابلز: ${checkoutName1.trim()} & ${checkoutName2.trim()}\n- الألوان والمقاسات مخصصة: سيتم التنسيق لتأكيدهم معكم الآن عبر الواتساب\n\nبرجاء موافاتنا بالتأكيد النهائي للبدء ⚡`
+                          : `أهلاً براند إسمي ذهب 👑\n\nلقد قمت للتو بطلب القطعة الملكية عبر الموقع:\n- المنتج/الباقة: ${checkoutProduct.name}\n- الاسم الخاص بي: ${checkoutName}\n- المقاس المختار: ${checkoutSize}\n- اللون المختار: ${checkoutColor || 'أسود'}\n\nبرجاء موافاتنا بالتأكيد النهائي للبدء ⚡`;
                         window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(messageText)}`, '_blank');
                       }}
                       className="w-full py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
@@ -2698,26 +2718,28 @@ export default function App() {
                   </div>
 
                   {/* CUSTOMER NAME */}
-                  <div className="space-y-1">
-                    <label className="block text-stone-700 font-bold text-[10px] mr-1">الاسم الكامل للمستلم 👤</label>
-                    <input
-                      type="text"
-                      required
-                      value={checkoutName}
-                      onChange={(e) => setCheckoutName(e.target.value)}
-                      placeholder="امش معنا باسمك الملكي الكامل..."
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold text-right"
-                    />
-                  </div>
+                  {!checkoutProduct.isDuo && (
+                    <div className="space-y-1">
+                      <label className="block text-stone-700 font-bold text-[10px] mr-1">الاسم الكامل للمستلم 👤</label>
+                      <input
+                        type="text"
+                        required
+                        value={checkoutName}
+                        onChange={(e) => setCheckoutName(e.target.value)}
+                        placeholder="امش معنا باسمك الملكي الكامل..."
+                        className="w-full px-3 py-2 bg-stone-50 border border-stone-200 text-xs text-stone-900 rounded-xl focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold text-right"
+                      />
+                    </div>
+                  )}
 
                   {/* DUO CUSTOM DETAILS SECTION */}
                   {checkoutProduct.isDuo && (
                     <div className="p-4 bg-stone-50 border border-stone-200 rounded-2xl space-y-4">
-                      <p className="text-[#A27B2B] font-bold text-[11px] text-right">👨‍❤️‍👨 تفاصيل تطريز الكابلز الثنائي:</p>
+                      <p className="text-[#A27B2B] font-bold text-[11px] text-right">👨‍❤️‍👨 الأسماء المطلوب تطريزها على قطعتي الكابلز:</p>
                       
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="block text-stone-705 text-stone-700 font-bold text-[9px] mr-1">الاسم الأول على القطعة</label>
+                          <label className="block text-stone-700 font-bold text-[9px] mr-1">الاسم الأول (القطعة 1) ✍️</label>
                           <input
                             type="text"
                             required
@@ -2728,7 +2750,7 @@ export default function App() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="block text-stone-705 text-stone-700 font-bold text-[9px] mr-1">الاسم الثاني على القطعة</label>
+                          <label className="block text-stone-700 font-bold text-[9px] mr-1">الاسم الثاني (القطعة 2) ✍️</label>
                           <input
                             type="text"
                             required
@@ -2740,29 +2762,10 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="space-y-2 pt-1 border-t border-stone-200">
-                        <label className="block text-stone-700 font-bold text-[10px] mr-1 text-right">
-                          اختر مقاس القطعة الثانية للثنائي 📏
-                        </label>
-                        <div className="flex flex-wrap gap-1.5 justify-start md:justify-end" style={{ direction: 'ltr' }}>
-                          {(checkoutProduct.availableSizes && checkoutProduct.availableSizes.length > 0
-                            ? checkoutProduct.availableSizes
-                            : ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
-                          ).map((sz: string) => (
-                            <button
-                              key={sz}
-                              type="button"
-                              onClick={() => setCheckoutSize2(sz)}
-                              className={`min-w-8 h-8 px-2 rounded-lg text-[10px] font-black transition-all flex items-center justify-center cursor-pointer border ${
-                                checkoutSize2 === sz
-                                  ? 'bg-[#B89753] text-white border-gold shadow-sm'
-                                  : 'bg-white text-stone-800 border-stone-200 hover:bg-stone-100'
-                              }`}
-                            >
-                              {sz}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="p-3 bg-amber-500/5 border border-gold/20 rounded-xl text-center">
+                        <p className="text-[10px] text-stone-600 leading-relaxed font-semibold">
+                          💡 المقاسات الافتراضية للثنائي هي <span className="text-amber-800 font-black">L</span> و <span className="text-amber-800 font-black">XL</span> بشكل تلقائي، والألوان يتم تحديدها وتأكيدها بالكامل معك بالصوت والصورة عبر الواتساب (اللون الافتراضي للتفصيل هو الأسود الفاخر، وفي حال توفر ألوان مميزة أخرى سيتم إعلامك بالخيارات وتنسيقها معك بدقة لتفادِي الأخطاء تماماً).
+                        </p>
                       </div>
                     </div>
                   )}
@@ -2813,69 +2816,73 @@ export default function App() {
                   </div>
 
                   {/* SIZES RADIOS ROW */}
-                  <div className="space-y-2">
-                    <label className="block text-stone-700 font-bold text-[10px] mr-1 text-right">
-                      اختر المقاس المتاح للقطعة 📏
-                    </label>
-                    <div className="flex flex-wrap gap-2 justify-start md:justify-end" style={{ direction: 'ltr' }}>
-                      {(checkoutProduct.availableSizes && checkoutProduct.availableSizes.length > 0
-                        ? checkoutProduct.availableSizes
-                        : ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
-                      ).map((sz: string) => (
-                        <button
-                          key={sz}
-                          type="button"
-                          onClick={() => setCheckoutSize(sz)}
-                          className={`min-w-10 h-10 px-3.5 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer border ${
-                            checkoutSize === sz
-                              ? 'bg-[#B89753] text-white border-gold shadow-md'
-                              : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
-                          }`}
-                        >
-                          {sz}
-                        </button>
-                      ))}
+                  {!checkoutProduct.isDuo && (
+                    <div className="space-y-2">
+                      <label className="block text-stone-700 font-bold text-[10px] mr-1 text-right">
+                        اختر المقاس المتاح للقطعة 📏
+                      </label>
+                      <div className="flex flex-wrap gap-2 justify-start md:justify-end" style={{ direction: 'ltr' }}>
+                        {(checkoutProduct.availableSizes && checkoutProduct.availableSizes.length > 0
+                          ? checkoutProduct.availableSizes
+                          : ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+                        ).map((sz: string) => (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => setCheckoutSize(sz)}
+                            className={`min-w-10 h-10 px-3.5 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer border ${
+                              checkoutSize === sz
+                                ? 'bg-[#B89753] text-white border-gold shadow-md'
+                                : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
+                            }`}
+                          >
+                            {sz}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-stone-400 text-right mt-1 font-sans">
+                        * يرجى العلم بأنك تتحمل المسؤولية الكاملة عن اختيار المقاس، وننصح بطلب مقاسك المعتاد.
+                      </p>
                     </div>
-                    <p className="text-[9px] text-stone-400 text-right mt-1 font-sans">
-                      * يرجى العلم بأنك تتحمل المسؤولية الكاملة عن اختيار المقاس، وننصح بطلب مقاسك المعتاد.
-                    </p>
-                  </div>
+                  )}
 
                   {/* COLORS RADIOS ROW */}
-                  <div className="space-y-2">
-                    <label className="block text-stone-700 font-bold text-[10px] mr-1 text-right font-sans">
-                      اختر اللون المتاح للموديل 🎨
-                    </label>
-                    <div className="flex flex-wrap gap-2 justify-start md:justify-end">
-                      {(checkoutProduct.availableColors && checkoutProduct.availableColors.length > 0
-                        ? checkoutProduct.availableColors
-                        : ['أسود', 'أبيض']
-                      ).map((col: string) => (
-                        <button
-                          key={col}
-                          type="button"
-                          onClick={() => setCheckoutColor(col)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer border ${
-                            checkoutColor === col
-                              ? 'bg-[#B89753] text-white border-gold shadow-md'
-                              : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
-                          }`}
-                        >
-                          <span className={`w-2 h-2 rounded-full inline-block ${
-                            col === 'أسود' ? 'bg-black' :
-                            col === 'أبيض' ? 'bg-white border border-stone-300' :
-                            col === 'أحمر' ? 'bg-red-500' :
-                            col === 'أزرق' ? 'bg-blue-500' :
-                            col === 'أخضر' ? 'bg-emerald-600' :
-                            col === 'كحلي' ? 'bg-blue-900' :
-                            col === 'رمادي' ? 'bg-gray-400' :
-                            'bg-[#B89753]'
-                          }`} />
-                          <span>{col}</span>
-                        </button>
-                      ))}
+                  {!checkoutProduct.isDuo && (
+                    <div className="space-y-2">
+                      <label className="block text-stone-700 font-bold text-[10px] mr-1 text-right font-sans">
+                        اختر اللون المتاح للموديل 🎨
+                      </label>
+                      <div className="flex flex-wrap gap-2 justify-start md:justify-end">
+                        {(checkoutProduct.availableColors && checkoutProduct.availableColors.length > 0
+                          ? checkoutProduct.availableColors
+                          : ['أسود', 'أبيض']
+                        ).map((col: string) => (
+                          <button
+                            key={col}
+                            type="button"
+                            onClick={() => setCheckoutColor(col)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+                              checkoutColor === col
+                                ? 'bg-[#B89753] text-white border-gold shadow-md'
+                                : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full inline-block ${
+                              col === 'أسود' ? 'bg-black' :
+                              col === 'أبيض' ? 'bg-white border border-stone-300' :
+                              col === 'أحمر' ? 'bg-red-500' :
+                              col === 'أزرق' ? 'bg-blue-500' :
+                              col === 'أخضر' ? 'bg-emerald-600' :
+                              col === 'كحلي' ? 'bg-blue-900' :
+                              col === 'رمادي' ? 'bg-gray-400' :
+                              'bg-[#B89753]'
+                            }`} />
+                            <span>{col}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* ADDITIONAL NOTES */}
                   <div className="space-y-1">
