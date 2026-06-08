@@ -1046,16 +1046,9 @@ export default function App() {
       await setDoc(doc(db, 'orders', orderId), orderData);
       setLeadSuccess(true);
 
-      // Redirect to WhatsApp with a precalculated generic message
-      const textMsg = `أهلاً براند إسمي ذهب الفخم، قمت للتو بطلب تيشيرت مخصص في الكتالوج:\nالاسم المرغوب: ${leadName}\nرقم المحمول: ${leadPhone}\nنوع الخامة: ${leadFabric === 'Premium' ? 'تاج مذهب بريميوم' : 'كلاسيك مصفر'}\nملاحظات: ${leadNotes || 'لا يوجد'}`;
-      const encodedText = encodeURIComponent(textMsg);
-      
       // Dispatch Telegram notification
+      const textMsg = `أهلاً براند إسمي ذهب الفخم، قمت للتو بطلب تيشيرت مخصص في الكتالوج:\nالاسم المرغوب: ${leadName}\nنوع الخامة: ${leadFabric === 'Premium' ? 'تاج مذهب بريميوم' : 'كلاسيك مصفر'}\nملاحظات: ${leadNotes || 'لا يوجد'}`;
       await sendTelegramNotification(orderData, textMsg);
-
-      setTimeout(() => {
-        window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodedText}`, '_blank');
-      }, 1000);
 
     } catch (err) {
       console.error(err);
@@ -1123,16 +1116,10 @@ export default function App() {
       await setDoc(doc(db, 'orders', orderId), orderData);
       setCustomOrderSuccess(true);
 
-      // Craft beautiful WhatsApp message (WITHOUT customer's phone number as requested for privacy/cleanliness)
       const textMsg = `أهلاً براند إسمي ذهب الفخم 👑\n\nلقد قمت للتو بطلب تصميم ملكي مخصص بالاسم عبر الموقع:\n- الاسم المطلوب (بالعربي): ${trimmedAr}\n- الاسم المطلوب (بالإنجليزي): ${customNameEn.trim() || 'لا يوجد'}\n- نوع وخامة التيشرت: ${selectedType.name} (${selectedType.priceLabel})\n- ملاحظات وتعديلات خاصة: ${customNotes.trim() || 'لا يوجد'}\n\nبرجاء تأكيد حجز هذا الطلب الملكي الفاخر والبدء الفوري ⚡`;
-      const encodedText = encodeURIComponent(textMsg);
 
-      // Dispatch Telegram notification
-      await sendTelegramNotification(orderData, textMsg);
-
-      setTimeout(() => {
-        window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodedText}`, '_blank');
-      }, 1000);
+       // Dispatch Telegram notification
+       await sendTelegramNotification(orderData, textMsg);
 
     } catch (err) {
       console.error('Error submitting custom order:', err);
@@ -1639,9 +1626,29 @@ export default function App() {
                     </div>
 
                     {leadSuccess ? (
-                      <div className="p-4 bg-amber-50 border border-gold/20 text-[#A27B2B] text-xs rounded-xl font-bold font-sans space-y-1">
-                        <div>تم حجز وتنسيق طلبك الفاخر كطلب خاص!</div>
-                        <div className="text-[10px] text-stone-500 font-mono mt-1">جاري توجيهك لواتساب براند الأسياد لبدء الطباعة والتحضير الفوري...</div>
+                      <div className="p-5 bg-amber-50 border border-gold/20 rounded-2xl text-center space-y-4">
+                        <div className="w-12 h-12 bg-amber-500/10 border border-gold/20 text-gold rounded-full flex items-center justify-center mx-auto">
+                          <Crown className="w-6 h-6 text-gold" strokeWidth={2.5} />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black text-[#A27B2B] font-sans">🏆 تم تسجيل طلب التخصيص الملكي بنجاح!</h4>
+                          <p className="text-[10px] text-stone-600 leading-relaxed font-sans">
+                            تم حجز طلبك وتجهيزه للتنفيذ في لوحة التحكم الخاصة بنا. اضغط على الزر الأخضر بالأسفل لتأكيد الأوردر ومتابعة التصميم الملكي لشكل الاسم عبر الواتساب:
+                          </p>
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            const textMsg = `أهلاً براند إسمي ذهب الفخم، قمت للتو بطلب تيشيرت مخصص في الكتالوج:\nالاسم المرغوب: ${leadName}\nنوع الخامة: ${leadFabric === 'Premium' ? 'تاج مذهب بريميوم' : 'كلاسيك مصفر'}\nملاحظات: ${leadNotes || 'لا يوجد'}`;
+                            window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(textMsg)}`, '_blank');
+                          }}
+                          className="w-full py-3 bg-[#25D366] hover:bg-[#128C7E] active:scale-[0.98] text-white rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:shadow-emerald-500/10 font-sans"
+                        >
+                          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current text-white" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.7 1.453 5.4.004 9.8-4.382 9.8-9.75 0-2.6-1.01-5.043-2.846-6.88C16.48 2.14 14.045 1.13 11.45 1.13c-5.4 0-9.8 4.387-9.8 9.754-.002 1.838.455 3.633 1.34 5.215L1.93 22.187l6.234-1.63a9.7 9.7 0 004.482 1.087zM17.5 13.9c-.33-.16-1.95-.96-2.25-1.07-.3-.11-.52-.16-.74.16-.22.33-.85 1.07-1.04 1.28-.19.22-.38.25-.71.09-.33-.16-1.4-.5-2.67-1.64-1-1-1.67-2.18-1.87-2.5-.2-.32-.02-.5.14-.66.15-.15.33-.38.5-.57.16-.19.22-.33.33-.55.11-.22.05-.4-.03-.57-.08-.17-.74-1.8-.1-2.47.62-.62 1.3-.3 1.5-.08.19.19.38.38.5.58.11.2.16.4.08.57-.08.17-.38.55-.7 1-.32.44-.67.92-.28 1.55.3.49.52.88.85 1.2a6 6 0 003.56 1.8c.6.14 1.14.15 1.56.09.47-.07 1.45-.6 1.65-1.18.2-.58.2-1.07.14-1.18-.06-.1-.22-.16-.55-.32z"/>
+                          </svg>
+                          <span>أرسل تفاصيل الطلب وتواصل عبر الواتساب</span>
+                        </button>
                       </div>
                     ) : (
                       <form onSubmit={handleQuickOrderSubmit} className="space-y-3 text-right">
@@ -1778,9 +1785,37 @@ export default function App() {
                 </div>
 
                 {customOrderSuccess ? (
-                  <div className="p-4 bg-amber-50 border border-gold/20 text-stone-900 text-xs rounded-xl font-bold font-sans text-center space-y-2">
-                    <div className="font-extrabold text-[#A27B2B]">🏆 لقد تم تسجيل وحجز أوردر تخصيص تيشيرت اسمك بنجاح!</div>
-                    <div className="text-[10px] text-stone-500 font-mono">جاري الآن نقلك وتوجيهك لفتح محادثة واتساب مع براند الأسياد لإكمال التصميم الفخم...</div>
+                  <div className="p-5 bg-amber-50 border border-gold/20 rounded-2xl text-center space-y-4">
+                    <div className="w-12 h-12 bg-amber-500/10 border border-gold/20 text-gold rounded-full flex items-center justify-center mx-auto">
+                      <Crown className="w-6 h-6 text-gold" strokeWidth={2.5} />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-[#A27B2B] font-sans">🏆 تم تسجيل طلب تفصيل اسمك الملكي بنجاح!</h4>
+                      <p className="text-[10px] text-stone-600 leading-relaxed font-sans">
+                        تم تسجيل وحفظ أوردر الاسم بنجاح في قاعدة بيانات الموقع. اضغط على الزر الأخضر بالأسفل لتأكيد أوردرك وإرسال تفاصيل الاسم وبدء الطباعة الفورية:
+                      </p>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        const defaultTypes = [
+                          { id: 'premium', name: 'تيشيرت التاج المذهب الملكي (Premium)', priceLabel: 'السعر: 880 ج.م', priceValue: 880 },
+                          { id: 'classic', name: 'تيشيرت كلاسيك قطن مصري كلاسيكي (Classic)', priceLabel: 'السعر: 499 ج.م', priceValue: 499 },
+                          { id: 'duo', name: 'عرض الكابلز الثنائي المذهب (Duo)', priceLabel: 'السعر: 899 ج.م (قطعتين)', priceValue: 899 }
+                        ];
+                        const availableTypes = (configApp.types && configApp.types.length > 0 ? configApp.types : defaultTypes)
+                          .filter((t: any) => t.id !== 'duo' && t.id !== 'classic_duo' && t.id !== 'premium_duo');
+                        const selectedType = availableTypes.find(t => t.id === customFabric || t.name === customFabric) || availableTypes[0];
+                        const textMsg = `أهلاً براند إسمي ذهب الفخم 👑\n\nلقد قمت للتو بطلب تصميم ملكي مخصص بالاسم عبر الموقع:\n- الاسم المطلوب (بالعربي): ${customNameAr.trim()}\n- الاسم المطلوب (بالإنجليزي): ${customNameEn.trim() || 'لا يوجد'}\n- نوع وخامة التيشرت: ${selectedType.name} (${selectedType.priceLabel})\n- ملاحظات وتعديلات خاصة: ${customNotes.trim() || 'لا يوجد'}\n\nبرجاء تأكيد حجز هذا الطلب الملكي الفاخر والبدء الفوري ⚡`;
+                        window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(textMsg)}`, '_blank');
+                      }}
+                      className="w-full py-3 bg-[#25D366] hover:bg-[#128C7E] active:scale-[0.98] text-white rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:shadow-emerald-500/10 font-sans"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current text-white" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.7 1.453 5.4.004 9.8-4.382 9.8-9.75 0-2.6-1.01-5.043-2.846-6.88C16.48 2.14 14.045 1.13 11.45 1.13c-5.4 0-9.8 4.387-9.8 9.754-.002 1.838.455 3.633 1.34 5.215L1.93 22.187l6.234-1.63a9.7 9.7 0 004.482 1.087zM17.5 13.9c-.33-.16-1.95-.96-2.25-1.07-.3-.11-.52-.16-.74.16-.22.33-.85 1.07-1.04 1.28-.19.22-.38.25-.71.09-.33-.16-1.4-.5-2.67-1.64-1-1-1.67-2.18-1.87-2.5-.2-.32-.02-.5.14-.66.15-.15.33-.38.5-.57.16-.19.22-.33.33-.55.11-.22.05-.4-.03-.57-.08-.17-.74-1.8-.1-2.47.62-.62 1.3-.3 1.5-.08.19.19.38.38.5.58.11.2.16.4.08.57-.08.17-.38.55-.7 1-.32.44-.67.92-.28 1.55.3.49.52.88.85 1.2a6 6 0 003.56 1.8c.6.14 1.14.15 1.56.09.47-.07 1.45-.6 1.65-1.18.2-.58.2-1.07.14-1.18-.06-.1-.22-.16-.55-.32z"/>
+                      </svg>
+                      <span>تأكيد الأوردر ومتابعة عبر الواتساب</span>
+                    </button>
                   </div>
                 ) : (
                   <form onSubmit={handleCustomOrderSubmit} id="custom-royal-order-form" className="space-y-4">
@@ -2666,9 +2701,11 @@ export default function App() {
                           : `أهلاً براند إسمي ذهب 👑\n\nلقد قمت للتو بطلب القطعة الملكية عبر الموقع:\n- المنتج/الباقة: ${checkoutProduct.name}\n- الاسم الخاص بي: ${checkoutName}\n- المقاس المختار: ${checkoutSize}\n- اللون المختار: ${checkoutColor || 'أسود'}\n\nبرجاء موافاتنا بالتأكيد النهائي للبدء ⚡`;
                         window.open(`https://wa.me/${configApp.whatsappNumber}?text=${encodeURIComponent(messageText)}`, '_blank');
                       }}
-                      className="w-full py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                      className="w-full py-3 bg-[#25D366] hover:bg-[#128C7E] active:scale-[0.98] text-white rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:shadow-emerald-500/10 font-sans"
                     >
-                      <MessageSquare className="w-4 h-4 fill-white text-[#25D366]" />
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current text-white" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.7 1.453 5.4.004 9.8-4.382 9.8-9.75 0-2.6-1.01-5.043-2.846-6.88C16.48 2.14 14.045 1.13 11.45 1.13c-5.4 0-9.8 4.387-9.8 9.754-.002 1.838.455 3.633 1.34 5.215L1.93 22.187l6.234-1.63a9.7 9.7 0 004.482 1.087zM17.5 13.9c-.33-.16-1.95-.96-2.25-1.07-.3-.11-.52-.16-.74.16-.22.33-.85 1.07-1.04 1.28-.19.22-.38.25-.71.09-.33-.16-1.4-.5-2.67-1.64-1-1-1.67-2.18-1.87-2.5-.2-.32-.02-.5.14-.66.15-.15.33-.38.5-.57.16-.19.22-.33.33-.55.11-.22.05-.4-.03-.57-.08-.17-.74-1.8-.1-2.47.62-.62 1.3-.3 1.5-.08.19.19.38.38.5.58.11.2.16.4.08.57-.08.17-.38.55-.7 1-.32.44-.67.92-.28 1.55.3.49.52.88.85 1.2a6 6 0 003.56 1.8c.6.14 1.14.15 1.56.09.47-.07 1.45-.6 1.65-1.18.2-.58.2-1.07.14-1.18-.06-.1-.22-.16-.55-.32z"/>
+                      </svg>
                       <span>تواصل مباشر واتساب للدعم الملكي</span>
                     </button>
                     
