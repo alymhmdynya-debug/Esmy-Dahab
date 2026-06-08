@@ -23,6 +23,9 @@ export interface ConfigApp {
   telegramBotToken?: string;
   telegramChatId?: string;
   telegramGasUrl?: string;
+  classicImageUrl?: string;
+  duoImageUrl?: string;
+  premiumImageUrl?: string;
 }
 
 export interface Design {
@@ -38,6 +41,13 @@ export interface Design {
   whatsappMessage: string;
   createdAt: any; // Firestore Timestamp or serverTimestamp
   showOnHome?: boolean;
+  description?: string; // Product description/specifications
+  price?: number; // Optional price (e.g., 499)
+  originalPrice?: number; // Optional original price
+  discountType?: 'percent' | 'fixed' | 'instead' | 'custom' | 'none'; // Discount option
+  discountValue?: string; // Value representing actual reduction or text
+  discountText?: string; // Calculated or custom label to show (e.g., "100 بدل 200")
+  category?: string; // Dynamic custom category (e.g., "بريميم", "كلاسيك", etc.)
 }
 
 export interface AccessCode {

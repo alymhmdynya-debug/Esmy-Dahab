@@ -16,6 +16,15 @@
         },
         "whatsappNumber": {
           "type": "string"
+        },
+        "classicImageUrl": {
+          "type": "string"
+        },
+        "duoImageUrl": {
+          "type": "string"
+        },
+        "premiumImageUrl": {
+          "type": "string"
         }
       },
       "required": [

@@ -52,12 +52,18 @@ export default function AdminDashboard() {
     stage3IconUrl: '/icons/stage3.png',
     telegramBotToken: '',
     telegramChatId: '',
-    telegramGasUrl: ''
+    telegramGasUrl: '',
+    classicImageUrl: '',
+    duoImageUrl: '',
+    premiumImageUrl: ''
   });
   const [savingPrices, setSavingPrices] = useState<boolean>(false);
   const [uploadingStage1, setUploadingStage1] = useState<boolean>(false);
   const [uploadingStage2, setUploadingStage2] = useState<boolean>(false);
   const [uploadingStage3, setUploadingStage3] = useState<boolean>(false);
+  const [uploadingClassicImg, setUploadingClassicImg] = useState<boolean>(false);
+  const [uploadingDuoImg, setUploadingDuoImg] = useState<boolean>(false);
+  const [uploadingPremiumImg, setUploadingPremiumImg] = useState<boolean>(false);
 
   // Dynamic Custom Types inputs for the brand (الأنواع والخامات المتاحة)
   const [newTypeName, setNewTypeName] = useState<string>('');
@@ -84,6 +90,11 @@ export default function AdminDashboard() {
   const [additionalImageColors, setAdditionalImageColors] = useState<string[]>([]);
   const [mainImageColor, setMainImageColor] = useState<string>('أسود');
   const [uploadingAdditionalFile, setUploadingAdditionalFile] = useState<boolean>(false);
+  const [designDescription, setDesignDescription] = useState<string>('');
+  const [designPrice, setDesignPrice] = useState<string>('');
+  const [designOriginalPrice, setDesignOriginalPrice] = useState<string>('');
+  const [designDiscountText, setDesignDiscountText] = useState<string>('');
+  const [designCategory, setDesignCategory] = useState<string>('');
 
   // Access Codes Inputs
   const [codes, setCodes] = useState<AccessCode[]>([]);
@@ -154,7 +165,10 @@ export default function AdminDashboard() {
             stage3IconUrl: data.stage3IconUrl ?? '/icons/stage3.png',
             telegramBotToken: data.telegramBotToken ?? '',
             telegramChatId: data.telegramChatId ?? '',
-            telegramGasUrl: data.telegramGasUrl ?? ''
+            telegramGasUrl: data.telegramGasUrl ?? '',
+            classicImageUrl: data.classicImageUrl ?? '',
+            duoImageUrl: data.duoImageUrl ?? '',
+            premiumImageUrl: data.premiumImageUrl ?? ''
           });
         } else {
           // Initialize if absent
@@ -295,6 +309,9 @@ export default function AdminDashboard() {
         return '';
       });
 
+      const priceVal = designPrice.trim() !== '' ? Number(designPrice) : undefined;
+      const originalPriceVal = designOriginalPrice.trim() !== '' ? Number(designOriginalPrice) : undefined;
+
       const designPayload = {
         name: designName,
         imageUrl: finalUrl,
@@ -305,11 +322,16 @@ export default function AdminDashboard() {
         availableColors: designAvailableColors,
         searchTags: tagsList,
         whatsappMessage: designWhatsapp.trim() || `أهلاً ESM، أريد طلب تيشيرت بتصميم: ${designName}`,
-        showOnHome: designShowOnHome
+        showOnHome: designShowOnHome,
+        description: designDescription.trim(),
+        price: priceVal ?? null,
+        originalPrice: originalPriceVal ?? null,
+        discountText: designDiscountText.trim(),
+        category: designCategory.trim()
       };
 
       if (editingDesignId) {
-        await updateDoc(doc(db, 'designs', editingDesignId), designPayload);
+        await updateDoc(doc(db, 'designs', editingDesignId), designPayload as any);
         alert('تم تعديل وحفظ التصميم بنجاح واعتمدنا التغييرات الفاخرة!');
       } else {
         const designId = doc(collection(db, 'designs')).id;
@@ -335,6 +357,11 @@ export default function AdminDashboard() {
       setAdditionalImages([]);
       setAdditionalImageColors([]);
       setMainImageColor('أسود');
+      setDesignDescription('');
+      setDesignPrice('');
+      setDesignOriginalPrice('');
+      setDesignDiscountText('');
+      setDesignCategory('');
       setEditingDesignId(null);
       setExistingImageUrl('');
     } catch (err) {
@@ -358,6 +385,11 @@ export default function AdminDashboard() {
     setDesignIsCustom(design.isCustom !== false);
     setDesignAvailableSizes(design.availableSizes || ['L', 'XL']);
     setDesignAvailableColors(design.availableColors || ['أسود', 'أبيض']);
+    setDesignDescription(design.description || '');
+    setDesignPrice(design.price ? design.price.toString() : '');
+    setDesignOriginalPrice(design.originalPrice ? design.originalPrice.toString() : '');
+    setDesignDiscountText(design.discountText || '');
+    setDesignCategory(design.category || '');
     
     // Parse images and imageColors
     const imgs = design.images || [];
@@ -398,6 +430,11 @@ export default function AdminDashboard() {
     setAdditionalImages([]);
     setAdditionalImageColors([]);
     setMainImageColor('أسود');
+    setDesignDescription('');
+    setDesignPrice('');
+    setDesignOriginalPrice('');
+    setDesignDiscountText('');
+    setDesignCategory('');
     setEditingDesignId(null);
     setExistingImageUrl('');
   };
@@ -993,7 +1030,7 @@ export default function AdminDashboard() {
 
                     {/* CATEGORY SELECT */}
                     <div>
-                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">تصنيف قطعة الملابس</label>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-2 font-sans text-right">تصنيف قطعة الملابس الرئيسي</label>
                       <select
                         value={designIsCustom ? 'custom' : 'regular'}
                         onChange={(e) => setDesignIsCustom(e.target.value === 'custom')}
@@ -1002,6 +1039,135 @@ export default function AdminDashboard() {
                         <option value="custom">الملابس المخصوصة (طباعة On Demand بالاسم الذهب)</option>
                         <option value="regular">الملابس العادية (تصاميم ونقوش جاهزة)</option>
                       </select>
+                    </div>
+
+                    {/* DYNAMIC CLASSIFICATION / CATEGORY */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-1 text-right">التصنيف أو البراند الديناميكي الفرعي (مثلاً: بريميم، كلاسيك)</label>
+                      <input
+                        type="text"
+                        value={designCategory}
+                        onChange={(e) => setDesignCategory(e.target.value)}
+                        placeholder="اكتب هنا التصنيف، مثلاً: بريميم أو كلاسيك"
+                        className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs font-sans focus:outline-none focus:border-gold text-right"
+                      />
+                      {(() => {
+                        const uniqueCategories = Array.from(new Set(designs.map(d => d.category).filter(Boolean))) as string[];
+                        if (uniqueCategories.length > 0) {
+                          return (
+                            <div className="mt-1.5 flex flex-wrap gap-1 justify-end items-center">
+                              <span className="text-[9.5px] text-zinc-500 ml-1">اختر من التصنيفات السابقة:</span>
+                              {uniqueCategories.map(cat => (
+                                <button
+                                  key={cat}
+                                  type="button"
+                                  onClick={() => setDesignCategory(cat)}
+                                  className={`text-[9.5px] px-2 py-0.5 rounded transition-all border ${
+                                    designCategory === cat 
+                                      ? 'bg-gold/25 border-gold text-gold font-bold' 
+                                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                                  }`}
+                                >
+                                  {cat}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+
+                    {/* DESCRIPTION */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-1 text-right">وصف ومواصفات قطعة الملابس (للمخصوص والعادي)</label>
+                      <textarea
+                        value={designDescription}
+                        onChange={(e) => setDesignDescription(e.target.value)}
+                        placeholder="اكتب هنا مواصفات الخامة، المميزات أو تفاصيل التطريز..."
+                        className="w-full h-16 px-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs focus:outline-none focus:border-gold resize-none text-right font-sans"
+                      />
+                    </div>
+
+                    {/* PRICE CONFIGURATION */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-zinc-400 text-[10px] font-semibold mb-1 text-right">السعر الأصلي (قبل الخصم) 🏷️</label>
+                        <input
+                          type="number"
+                          value={designOriginalPrice}
+                          onChange={(e) => setDesignOriginalPrice(e.target.value)}
+                          placeholder="مثال: 600"
+                          className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs text-right font-mono focus:outline-none focus:border-gold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 text-[10px] font-semibold mb-1 text-right">سعر البيع الحالي (اختياري)</label>
+                        <input
+                          type="number"
+                          value={designPrice}
+                          onChange={(e) => setDesignPrice(e.target.value)}
+                          placeholder="مثال: 450 (اتركه فارغاً لإخفاءه)"
+                          className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-xs text-right font-mono focus:outline-none focus:border-gold"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[9.5px] text-zinc-500 text-right">في حال عدم إدخال سعر بيع، سيُعرض "السعر عند الطلب" تلقائياً.</p>
+
+                    {/* DYNAMIC DISCOUNT INPUT */}
+                    <div>
+                      <label className="block text-zinc-400 text-[10px] font-semibold mb-1 text-right">لصيقة أو نص الخصم الديناميكي 🏷️ (مثال: ١٠٠ بدل ٢٠٠)</label>
+                      <input
+                        type="text"
+                        value={designDiscountText}
+                        onChange={(e) => setDesignDiscountText(e.target.value)}
+                        placeholder="مثال: ١٠٠ بدل ٢٠٠ أو خصم ٢٠ جنيه أو خصم ٥%"
+                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-gold font-bold rounded-lg text-xs text-right focus:outline-none focus:border-gold"
+                      />
+                      {(() => {
+                        const p = Number(designPrice);
+                        const op = Number(designOriginalPrice);
+                        if (p > 0 && op > p) {
+                          const diffPrice = op - p;
+                          const pct = Math.round(((op - p) / op) * 100);
+                          return (
+                            <div className="mt-1.5 p-2 bg-zinc-950/65 rounded border border-zinc-800/80 space-y-1.5 text-right">
+                              <span className="text-[9px] text-zinc-400 block font-sans">توليد تلقائي مقترح (انقر للاختيار):</span>
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => setDesignDiscountText(`${p} بدل ${op}`)}
+                                  className="text-[9px] bg-gold/15 hover:bg-gold/25 text-gold border border-gold/30 px-2 py-0.5 rounded font-sans cursor-pointer transition-all"
+                                >
+                                  {p} بدل {op}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDesignDiscountText(`خصم ${diffPrice} جنيه`)}
+                                  className="text-[9px] bg-gold/15 hover:bg-gold/25 text-gold border border-gold/30 px-2 py-0.5 rounded font-sans cursor-pointer transition-all"
+                                >
+                                  خصم {diffPrice} ج.م
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDesignDiscountText(`خصم ${pct}%`)}
+                                  className="text-[9px] bg-gold/15 hover:bg-gold/25 text-gold border border-gold/30 px-2 py-0.5 rounded font-sans cursor-pointer transition-all"
+                                >
+                                  خصم {pct}%
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDesignDiscountText('')}
+                                  className="text-[9px] bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-900/40 px-2 py-0.5 rounded font-sans cursor-pointer transition-all"
+                                >
+                                  بدون خصم
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     {/* MAIN IMAGE COLOR */}
@@ -1272,8 +1438,46 @@ export default function AdminDashboard() {
                                 </div>
                               )}
                             </div>
-                            <div className="p-3 space-y-1">
-                              <h5 className="font-bold text-xs text-white truncate">{d.name}</h5>
+                            <div className="p-3 space-y-2">
+                              <div>
+                                <div className="flex items-center gap-1.5 justify-end mb-1">
+                                  {d.category && (
+                                    <span className="bg-gold/15 text-gold border border-gold/30 text-[8px] font-bold px-1.5 py-0.5 rounded">
+                                      {d.category}
+                                    </span>
+                                  )}
+                                  <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded ${
+                                    d.isCustom ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                  }`}>
+                                    {d.isCustom ? 'مخصوص 🎨' : 'عادي 🛍️'}
+                                  </span>
+                                </div>
+                                <h5 className="font-bold text-xs text-white truncate">{d.name}</h5>
+                              </div>
+                              
+                              {/* Price and discount overview */}
+                              <div className="text-[10px] text-zinc-300 font-sans flex items-center justify-between">
+                                {d.price ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-gold font-bold">{d.price} ج.م</span>
+                                    {d.originalPrice && (
+                                      <span className="text-zinc-500 line-through text-[9px]">{d.originalPrice}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-stone-500 font-bold block text-right w-full">السعر عند الطلب</span>
+                                )}
+                                {d.discountText && (
+                                  <span className="text-[9px] bg-red-950/40 text-red-400 px-1.5 py-0.5 rounded font-bold">{d.discountText}</span>
+                                )}
+                              </div>
+
+                              {d.description && (
+                                <p className="text-[9px] text-zinc-450 text-zinc-400 truncate text-right font-sans" title={d.description}>
+                                  {d.description}
+                                </p>
+                              )}
+
                               <div className="flex flex-wrap gap-1">
                                 {d.searchTags.slice(0, 3).map((tag, idx) => (
                                   <span key={idx} className="bg-zinc-900 text-zinc-500 text-[8px] font-medium px-1.5 py-0.5 rounded">
@@ -1341,8 +1545,47 @@ export default function AdminDashboard() {
                       value={prices.classicDescription}
                       onChange={(e) => setPrices({ ...prices, classicDescription: e.target.value })}
                       placeholder="اكتب هنا مواصفات الباقة..."
-                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right"
+                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right font-sans mb-3"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">صورة الباقة الكلاسيكية على انفراد 🎨 (اختياري)</label>
+                    <div className="flex gap-2 items-center">
+                      {prices.classicImageUrl && (
+                        <img src={prices.classicImageUrl} alt="Classic Product" className="w-8 h-8 rounded border border-zinc-800 object-cover bg-black" referrerPolicy="no-referrer" />
+                      )}
+                      <input
+                        type="text"
+                        value={prices.classicImageUrl || ''}
+                        onChange={(e) => setPrices({ ...prices, classicImageUrl: e.target.value })}
+                        placeholder="رابط الصورة (سيغنيك عن مستويات البروفايل)"
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none text-right"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <label className="px-3 py-1.5 bg-gold/15 hover:bg-gold/25 border border-gold/30 text-gold text-[10px] font-bold rounded-lg cursor-pointer transition-all flex-shrink-0">
+                        {uploadingClassicImg ? 'جاري الرفع...' : 'رفع صورة 📤'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setUploadingClassicImg(true);
+                              try {
+                                const url = await uploadToImgBB(e.target.files[0]);
+                                setPrices(prev => ({ ...prev, classicImageUrl: url }));
+                                alert('تم رفع صورة الباقة الكلاسيكية بنجاح!');
+                              } catch (err) {
+                                console.error(err);
+                                alert('فشل رفع الصورة لمزود ImgBB.');
+                              } finally {
+                                setUploadingClassicImg(false);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -1370,8 +1613,47 @@ export default function AdminDashboard() {
                       value={prices.premiumDescription}
                       onChange={(e) => setPrices({ ...prices, premiumDescription: e.target.value })}
                       placeholder="اكتب هنا مواصفات الباقة..."
-                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right"
+                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right font-sans mb-3"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">صورة باقة التاج المذهب على انفراد 🎨 (اختياري)</label>
+                    <div className="flex gap-2 items-center">
+                      {prices.premiumImageUrl && (
+                        <img src={prices.premiumImageUrl} alt="Premium Product" className="w-8 h-8 rounded border border-zinc-800 object-cover bg-black" referrerPolicy="no-referrer" />
+                      )}
+                      <input
+                        type="text"
+                        value={prices.premiumImageUrl || ''}
+                        onChange={(e) => setPrices({ ...prices, premiumImageUrl: e.target.value })}
+                        placeholder="رابط الصورة (سيغنيك عن مستويات البروفايل)"
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none text-right"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <label className="px-3 py-1.5 bg-gold/15 hover:bg-gold/25 border border-gold/30 text-gold text-[10px] font-bold rounded-lg cursor-pointer transition-all flex-shrink-0">
+                        {uploadingPremiumImg ? 'جاري الرفع...' : 'رفع صورة 📤'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setUploadingPremiumImg(true);
+                              try {
+                                const url = await uploadToImgBB(e.target.files[0]);
+                                setPrices(prev => ({ ...prev, premiumImageUrl: url }));
+                                alert('تم رفع صورة الباقة البريميوم بنجاح!');
+                              } catch (err) {
+                                console.error(err);
+                                alert('فشل رفع الصورة لمزود ImgBB.');
+                              } finally {
+                                setUploadingPremiumImg(false);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -1399,8 +1681,47 @@ export default function AdminDashboard() {
                       value={prices.duoDescription}
                       onChange={(e) => setPrices({ ...prices, duoDescription: e.target.value })}
                       placeholder="اكتب هنا مواصفات الباقة..."
-                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right"
+                      className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs rounded-lg focus:outline-none text-right font-sans mb-3"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-zinc-400 text-[11px] font-semibold mb-1 text-right">صورة عرض الكابلز الثنائي على انفراد 🎨 (اختياري)</label>
+                    <div className="flex gap-2 items-center">
+                      {prices.duoImageUrl && (
+                        <img src={prices.duoImageUrl} alt="Duo Product" className="w-8 h-8 rounded border border-zinc-800 object-cover bg-black" referrerPolicy="no-referrer" />
+                      )}
+                      <input
+                        type="text"
+                        value={prices.duoImageUrl || ''}
+                        onChange={(e) => setPrices({ ...prices, duoImageUrl: e.target.value })}
+                        placeholder="رابط الصورة (سيغنيك عن مستويات البروفايل)"
+                        className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-white text-xs font-mono rounded-lg focus:outline-none text-right"
+                        style={{ direction: 'ltr' }}
+                      />
+                      <label className="px-3 py-1.5 bg-gold/15 hover:bg-gold/25 border border-gold/30 text-gold text-[10px] font-bold rounded-lg cursor-pointer transition-all flex-shrink-0">
+                        {uploadingDuoImg ? 'جاري الرفع...' : 'رفع صورة 📤'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setUploadingDuoImg(true);
+                              try {
+                                const url = await uploadToImgBB(e.target.files[0]);
+                                setPrices(prev => ({ ...prev, duoImageUrl: url }));
+                                alert('تم رفع صورة عرض الكابلز بنجاح!');
+                              } catch (err) {
+                                console.error(err);
+                                alert('فشل رفع الصورة لمزود ImgBB.');
+                              } finally {
+                                setUploadingDuoImg(false);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
 
